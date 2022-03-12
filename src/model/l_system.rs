@@ -1,4 +1,5 @@
 use super::musical_notation;
+use std::fmt;
 
 pub mod error {
     use std::error::Error;
@@ -63,6 +64,12 @@ pub struct Atom {
     symbol: char,
 }
 
+impl fmt::Debug for Atom {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+		write!(f, "{}", self.symbol)
+	}
+}
+
 impl Atom {
     fn from_string(string_representation: &str) -> Result<Atom, RepresentationError> {
         let mut i = string_representation.chars();
@@ -95,7 +102,7 @@ pub struct Axiom {
 }
 
 impl Axiom {
-    fn from(string_representation: &str) -> Result<Axiom, RepresentationError> {
+    pub fn from(string_representation: &str) -> Result<Axiom, RepresentationError> {
         if string_representation.is_empty() {
             return Err(RepresentationError::new("Axiom is empty"));
         }
@@ -109,6 +116,42 @@ impl Axiom {
 
         return Ok(axiom);
     }
+	
+	/*
+	pub fn apply(&mut self, rule: Rule) {
+		let mut new_atom_list: Vec<Atom> = vec![];
+		
+		for atom in &self.atom_list {
+			if rule.lhs.symbol == atom.symbol {
+				for atom in rule.rhs.atom_list {
+					new_atom_list.push(Atom{
+						action: atom.action,
+						symbol: atom.symbol
+					});
+				}
+			} else {
+				new_atom_list.push(Atom{
+					action: atom.action,
+					symbol: atom.symbol
+				});
+			}
+		}
+		
+		self.atom_list = new_atom_list;
+	}*/
+}
+
+impl fmt::Debug for Axiom {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+		for atom in &self.atom_list {
+			match write!(f, "{:?}", atom) {
+				Err(e) => return Err(e),
+				Ok(_) => {},
+			};
+		}
+		
+		Ok(())
+	}
 }
 
 pub struct Rule {
@@ -117,7 +160,7 @@ pub struct Rule {
 }
 
 impl Rule {
-    fn from(string_representation: &str) -> Result<Rule, RepresentationError> {
+    pub fn from(string_representation: &str) -> Result<Rule, RepresentationError> {
         match string_representation.split_once("->") {
             None => Err(RepresentationError::new("Rule didn't contain a '->'.")),
             Some((lhs_str, rhs_str)) => Ok(Rule {
@@ -126,4 +169,10 @@ impl Rule {
             }),
         }
     }
+}
+
+impl fmt::Debug for Rule {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+		write!(f, "{:?} -> {:?}", self.lhs, self.rhs)
+	}
 }

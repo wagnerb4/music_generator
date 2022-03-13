@@ -26,49 +26,22 @@ pub mod error {
     }
 
     impl Error for RepresentationError {}
-	
-	impl From<RepresentationError> for String {
-		fn from(error: RepresentationError) -> Self { 
-			format!("{}", error)
-		}
-	}
+
+    impl From<RepresentationError> for String {
+        fn from(error: RepresentationError) -> Self {
+            format!("{}", error)
+        }
+    }
 }
 
 use error::RepresentationError;
-use super::musical_notation;
 use std::fmt;
-
-pub trait ActionState {}
-
-pub trait Action {
-    fn get_state(&self) -> Option<Box<dyn ActionState>>;
-    fn get_symbol(&self) -> char;
-    fn gen_next_musical_element(&mut self) -> Option<musical_notation::MusicalElement>;
-}
-
-pub struct NoAction {
-    symbol: char,
-}
-
-impl Action for NoAction {
-    fn get_state(&self) -> Option<Box<dyn ActionState>> {
-        Option::None
-    }
-
-    fn get_symbol(&self) -> char {
-        self.symbol
-    }
-
-    fn gen_next_musical_element(&mut self) -> Option<musical_notation::MusicalElement> {
-        Option::None
-    }
-}
 
 // #--- Atom ---#
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Atom {
-    symbol: char,
+    pub symbol: char,
 }
 
 impl Atom {
@@ -96,15 +69,15 @@ impl Atom {
 }
 
 impl fmt::Debug for Atom {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-		write!(f, "{}", self.symbol)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.symbol)
+    }
 }
 
 // #--- Axiom ---#
 
 pub struct Axiom {
-    atom_list: Vec<Atom>,
+    pub atom_list: Vec<Atom>,
 }
 
 impl Axiom {
@@ -122,35 +95,35 @@ impl Axiom {
 
         return Ok(axiom);
     }
-	
-	pub fn apply(&mut self, rule: &Rule) {
-		let mut new_atom_list: Vec<Atom> = vec![];
-		
-		for atom in &self.atom_list {
-			if rule.lhs.symbol == atom.symbol {
-				for atom in &rule.rhs.atom_list {
-					new_atom_list.push(*atom);
-				}
-			} else {
-				new_atom_list.push(*atom);
-			}
-		}
-		
-		self.atom_list = new_atom_list;
-	}
+
+    pub fn apply(&mut self, rule: &Rule) {
+        let mut new_atom_list: Vec<Atom> = vec![];
+
+        for atom in &self.atom_list {
+            if rule.lhs.symbol == atom.symbol {
+                for atom in &rule.rhs.atom_list {
+                    new_atom_list.push(*atom);
+                }
+            } else {
+                new_atom_list.push(*atom);
+            }
+        }
+
+        self.atom_list = new_atom_list;
+    }
 }
 
 impl fmt::Debug for Axiom {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-		for atom in &self.atom_list {
-			match write!(f, "{:?}", atom) {
-				Err(e) => return Err(e),
-				Ok(_) => {},
-			};
-		}
-		
-		Ok(())
-	}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        for atom in &self.atom_list {
+            match write!(f, "{:?}", atom) {
+                Err(e) => return Err(e),
+                Ok(_) => {}
+            };
+        }
+
+        Ok(())
+    }
 }
 
 // #--- Rule ---#
@@ -173,132 +146,141 @@ impl Rule {
 }
 
 impl fmt::Debug for Rule {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-		write!(f, "{:?}->{:?}", self.lhs, self.rhs)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{:?}->{:?}", self.lhs, self.rhs)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-	use super::{Atom, Axiom, Rule};
-	
-	#[test]
-	fn create_and_display_atom_test() -> Result<(), String> {
-		assert_eq!(format!("{:?}", Atom::from_string("A")?), "A");
-		assert_eq!(format!("{:?}", Atom::from_char('A')), "A");
-		Ok(())
-	}
-	
-	#[test]
-	fn create_empty_atom_test() {
-		match Atom::from_string("") {
-			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom is empty."),
-			Ok(_) => panic!("Created empty atom."),
-		}
-	}
-	
-	#[test]
-	fn create_overfull_atom_test() {
-		match Atom::from_string("AABB") {
+    use super::{Atom, Axiom, Rule};
+
+    #[test]
+    fn create_and_display_atom_test() -> Result<(), String> {
+        assert_eq!(format!("{:?}", Atom::from_string("A")?), "A");
+        assert_eq!(format!("{:?}", Atom::from_char('A')), "A");
+        Ok(())
+    }
+
+    #[test]
+    fn create_empty_atom_test() {
+        match Atom::from_string("") {
+            Err(e) => assert_eq!(
+                format!("{}", e),
+                "There was an Error with the Representation of an L-System Element: Atom is empty."
+            ),
+            Ok(_) => panic!("Created empty atom."),
+        }
+    }
+
+    #[test]
+    fn create_overfull_atom_test() {
+        match Atom::from_string("AABB") {
 			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
 			Ok(_) => panic!("Created overfull atom."),
 		}
-		
-		match Atom::from_string("AC") {
+
+        match Atom::from_string("AC") {
 			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
 			Ok(_) => panic!("Created overfull atom."),
 		}
-		
-		match Atom::from_string("CCC") {
+
+        match Atom::from_string("CCC") {
 			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
 			Ok(_) => panic!("Created overfull atom."),
 		}
-	}
-	
-	#[test]
-	fn create_and_display_axiom_test() -> Result<(), String> {
-		assert_eq!(format!("{:?}", Axiom::from("ABA")?), "ABA");
-		Ok(())
-	}
-	
-	#[test]
-	fn create_empty_axiom_test() {
-		match Axiom::from("") {
+    }
+
+    #[test]
+    fn create_and_display_axiom_test() -> Result<(), String> {
+        assert_eq!(format!("{:?}", Axiom::from("ABA")?), "ABA");
+        Ok(())
+    }
+
+    #[test]
+    fn create_empty_axiom_test() {
+        match Axiom::from("") {
 			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Axiom is empty."),
 			Ok(_) => panic!("Created empty axiom."),
 		}
-	}
+    }
 
-	#[test]
-	fn create_and_display_rule_test() -> Result<(), String> {
-		assert_eq!(format!("{:?}", Rule::from("A->ABA")?), "A->ABA");
-		Ok(())
-	}
-	
-	#[test]
-	fn create_rule_without_seperator() {
-		const EXPECTED_ERROR_MESSAGE: &str = "There was an Error with the Representation of an L-System Element: Rule didn't contain a '->'.";
-		
-		match Rule::from("") {
-			Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
-			Ok(_) => panic!("Created rule without seperator."),
-		}
-		
-		match Rule::from("A ABA") {
-			Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
-			Ok(_) => panic!("Created rule without seperator."),
-		}
-		
-		match Rule::from("AABA") {
-			Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
-			Ok(_) => panic!("Created rule without seperator."),
-		}
-		
-		match Rule::from("A=>ABA") {
-			Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
-			Ok(_) => panic!("Created rule without seperator."),
-		}
-	}
-	
-	#[test]
-	fn create_rule_with_empty_side_test() {
-		match Rule::from("->ABA") {
-			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom is empty."),
-			Ok(_) => panic!("Created rule with empty side."),
-		}
-		
-		match Rule::from("->") {
-			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom is empty."),
-			Ok(_) => panic!("Created rule with empty side."),
-		}
-		
-		match Rule::from("A->") {
+    #[test]
+    fn create_and_display_rule_test() -> Result<(), String> {
+        assert_eq!(format!("{:?}", Rule::from("A->ABA")?), "A->ABA");
+        Ok(())
+    }
+
+    #[test]
+    fn create_rule_without_seperator() {
+        const EXPECTED_ERROR_MESSAGE: &str = "There was an Error with the Representation of an L-System Element: Rule didn't contain a '->'.";
+
+        match Rule::from("") {
+            Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
+            Ok(_) => panic!("Created rule without seperator."),
+        }
+
+        match Rule::from("A ABA") {
+            Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
+            Ok(_) => panic!("Created rule without seperator."),
+        }
+
+        match Rule::from("AABA") {
+            Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
+            Ok(_) => panic!("Created rule without seperator."),
+        }
+
+        match Rule::from("A=>ABA") {
+            Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
+            Ok(_) => panic!("Created rule without seperator."),
+        }
+    }
+
+    #[test]
+    fn create_rule_with_empty_side_test() {
+        match Rule::from("->ABA") {
+            Err(e) => assert_eq!(
+                format!("{}", e),
+                "There was an Error with the Representation of an L-System Element: Atom is empty."
+            ),
+            Ok(_) => panic!("Created rule with empty side."),
+        }
+
+        match Rule::from("->") {
+            Err(e) => assert_eq!(
+                format!("{}", e),
+                "There was an Error with the Representation of an L-System Element: Atom is empty."
+            ),
+            Ok(_) => panic!("Created rule with empty side."),
+        }
+
+        match Rule::from("A->") {
 			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Axiom is empty."),
 			Ok(_) => panic!("Created rule with empty side."),
 		}
-	}
-	
-	#[test]
-	fn create_rule_with_overfull_atom() {
-		match Rule::from("AB->ABA") {
+    }
+
+    #[test]
+    fn create_rule_with_overfull_atom() {
+        match Rule::from("AB->ABA") {
 			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
 			Ok(_) => panic!("Created rule with overfull atom."),
 		}
-		
-		match Rule::from("ABA->ABA") {
+
+        match Rule::from("ABA->ABA") {
 			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
 			Ok(_) => panic!("Created rule with overfull atom."),
 		}
-	}
-	
-	#[test]
-	fn apply_rule_to_axiom_test() -> Result<(), String> {
-		let mut axiom: Axiom = Axiom::from("ABA")?;
-		let rule: Rule = Rule::from("A->ABA")?;
-		axiom.apply(&rule);
-		
-		assert_eq!(format!("{:?}", axiom), "ABABABA");
-		
-		Ok(())
-	}
+    }
+
+    #[test]
+    fn apply_rule_to_axiom_test() -> Result<(), String> {
+        let mut axiom: Axiom = Axiom::from("ABA")?;
+        let rule: Rule = Rule::from("A->ABA")?;
+        axiom.apply(&rule);
+
+        assert_eq!(format!("{:?}", axiom), "ABABABA");
+
+        Ok(())
+    }
 }

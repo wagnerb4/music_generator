@@ -19,7 +19,7 @@ pub mod error {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(
                 f,
-                "There was an Error with the Representation of an L-System Element: {}",
+                "There was an Error with the Representation of an L-System Element: {}.",
                 self.message
             )
         }
@@ -78,13 +78,13 @@ impl Atom {
         if let Some(first) = i.next() {
             if None != i.next() {
                 Err(RepresentationError::new(
-                    "Atom contains more that one character.",
+                    "Atom contains more that one character",
                 ))
             } else {
                 Ok(Atom::from_char(first))
             }
         } else {
-            Err(RepresentationError::new("Atom is empty."))
+            Err(RepresentationError::new("Atom is empty"))
         }
     }
 
@@ -163,7 +163,7 @@ pub struct Rule {
 impl Rule {
     pub fn from(string_representation: &str) -> Result<Rule, RepresentationError> {
         match string_representation.split_once("->") {
-            None => Err(RepresentationError::new("Rule didn't contain a '->'.")),
+            None => Err(RepresentationError::new("Rule didn't contain a '->'")),
             Some((lhs_str, rhs_str)) => Ok(Rule {
                 lhs: Atom::from_string(lhs_str.trim())?,
                 rhs: Axiom::from(rhs_str.trim())?,
@@ -174,7 +174,7 @@ impl Rule {
 
 impl fmt::Debug for Rule {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-		write!(f, "{:?} -> {:?}", self.lhs, self.rhs)
+		write!(f, "{:?}->{:?}", self.lhs, self.rhs)
 	}
 }
 
@@ -220,11 +220,75 @@ mod tests {
 		assert_eq!(format!("{:?}", Axiom::from("ABA")?), "ABA");
 		Ok(())
 	}
+	
+	#[test]
+	fn create_empty_axiom_test() {
+		match Axiom::from("") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Axiom is empty."),
+			Ok(_) => panic!("Created empty axiom."),
+		}
+	}
 
 	#[test]
 	fn create_and_display_rule_test() -> Result<(), String> {
-		assert_eq!(format!("{:?}", Rule::from("A->ABA")?), "A -> ABA");
+		assert_eq!(format!("{:?}", Rule::from("A->ABA")?), "A->ABA");
 		Ok(())
+	}
+	
+	#[test]
+	fn create_rule_without_seperator() {
+		const EXPECTED_ERROR_MESSAGE: &str = "There was an Error with the Representation of an L-System Element: Rule didn't contain a '->'.";
+		
+		match Rule::from("") {
+			Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
+			Ok(_) => panic!("Created rule without seperator."),
+		}
+		
+		match Rule::from("A ABA") {
+			Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
+			Ok(_) => panic!("Created rule without seperator."),
+		}
+		
+		match Rule::from("AABA") {
+			Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
+			Ok(_) => panic!("Created rule without seperator."),
+		}
+		
+		match Rule::from("A=>ABA") {
+			Err(e) => assert_eq!(format!("{}", e), EXPECTED_ERROR_MESSAGE),
+			Ok(_) => panic!("Created rule without seperator."),
+		}
+	}
+	
+	#[test]
+	fn create_rule_with_empty_side_test() {
+		match Rule::from("->ABA") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom is empty."),
+			Ok(_) => panic!("Created rule with empty side."),
+		}
+		
+		match Rule::from("->") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom is empty."),
+			Ok(_) => panic!("Created rule with empty side."),
+		}
+		
+		match Rule::from("A->") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Axiom is empty."),
+			Ok(_) => panic!("Created rule with empty side."),
+		}
+	}
+	
+	#[test]
+	fn create_rule_with_overfull_atom() {
+		match Rule::from("AB->ABA") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
+			Ok(_) => panic!("Created rule with overfull atom."),
+		}
+		
+		match Rule::from("ABA->ABA") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
+			Ok(_) => panic!("Created rule with overfull atom."),
+		}
 	}
 	
 	#[test]

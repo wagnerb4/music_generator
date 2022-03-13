@@ -1,6 +1,3 @@
-use super::musical_notation;
-use std::fmt;
-
 pub mod error {
     use std::error::Error;
     use std::fmt;
@@ -29,9 +26,17 @@ pub mod error {
     }
 
     impl Error for RepresentationError {}
+	
+	impl From<RepresentationError> for String {
+		fn from(error: RepresentationError) -> Self { 
+			format!("{}", error)
+		}
+	}
 }
 
 use error::RepresentationError;
+use super::musical_notation;
+use std::fmt;
 
 pub trait ActionState {}
 
@@ -59,15 +64,11 @@ impl Action for NoAction {
     }
 }
 
-pub struct Atom {
-    action: Box<dyn Action>,
-    symbol: char,
-}
+// #--- Atom ---#
 
-impl fmt::Debug for Atom {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-		write!(f, "{}", self.symbol)
-	}
+#[derive(Copy, Clone)]
+pub struct Atom {
+    symbol: char,
 }
 
 impl Atom {
@@ -89,13 +90,18 @@ impl Atom {
 
     fn from_char(char_representation: char) -> Atom {
         Atom {
-            action: Box::new(NoAction {
-                symbol: char_representation,
-            }),
             symbol: char_representation,
         }
     }
 }
+
+impl fmt::Debug for Atom {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+		write!(f, "{}", self.symbol)
+	}
+}
+
+// #--- Axiom ---#
 
 pub struct Axiom {
     atom_list: Vec<Atom>,
@@ -107,7 +113,7 @@ impl Axiom {
             return Err(RepresentationError::new("Axiom is empty"));
         }
 
-        let mut iter = string_representation.chars();
+        let iter = string_representation.chars();
         let mut axiom = Axiom { atom_list: vec![] };
 
         for character in iter {
@@ -117,28 +123,21 @@ impl Axiom {
         return Ok(axiom);
     }
 	
-	/*
-	pub fn apply(&mut self, rule: Rule) {
+	pub fn apply(&mut self, rule: &Rule) {
 		let mut new_atom_list: Vec<Atom> = vec![];
 		
 		for atom in &self.atom_list {
 			if rule.lhs.symbol == atom.symbol {
-				for atom in rule.rhs.atom_list {
-					new_atom_list.push(Atom{
-						action: atom.action,
-						symbol: atom.symbol
-					});
+				for atom in &rule.rhs.atom_list {
+					new_atom_list.push(*atom);
 				}
 			} else {
-				new_atom_list.push(Atom{
-					action: atom.action,
-					symbol: atom.symbol
-				});
+				new_atom_list.push(*atom);
 			}
 		}
 		
 		self.atom_list = new_atom_list;
-	}*/
+	}
 }
 
 impl fmt::Debug for Axiom {
@@ -153,6 +152,8 @@ impl fmt::Debug for Axiom {
 		Ok(())
 	}
 }
+
+// #--- Rule ---#
 
 pub struct Rule {
     lhs: Atom,
@@ -174,5 +175,66 @@ impl Rule {
 impl fmt::Debug for Rule {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
 		write!(f, "{:?} -> {:?}", self.lhs, self.rhs)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::{Atom, Axiom, Rule};
+	
+	#[test]
+	fn create_and_display_atom_test() -> Result<(), String> {
+		assert_eq!(format!("{:?}", Atom::from_string("A")?), "A");
+		assert_eq!(format!("{:?}", Atom::from_char('A')), "A");
+		Ok(())
+	}
+	
+	#[test]
+	fn create_empty_atom_test() {
+		match Atom::from_string("") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom is empty."),
+			Ok(_) => panic!("Created empty atom."),
+		}
+	}
+	
+	#[test]
+	fn create_overfull_atom_test() {
+		match Atom::from_string("AABB") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
+			Ok(_) => panic!("Created overfull atom."),
+		}
+		
+		match Atom::from_string("AC") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
+			Ok(_) => panic!("Created overfull atom."),
+		}
+		
+		match Atom::from_string("CCC") {
+			Err(e) => assert_eq!(format!("{}", e), "There was an Error with the Representation of an L-System Element: Atom contains more that one character."),
+			Ok(_) => panic!("Created overfull atom."),
+		}
+	}
+	
+	#[test]
+	fn create_and_display_axiom_test() -> Result<(), String> {
+		assert_eq!(format!("{:?}", Axiom::from("ABA")?), "ABA");
+		Ok(())
+	}
+
+	#[test]
+	fn create_and_display_rule_test() -> Result<(), String> {
+		assert_eq!(format!("{:?}", Rule::from("A->ABA")?), "A -> ABA");
+		Ok(())
+	}
+	
+	#[test]
+	fn apply_rule_to_axiom_test() -> Result<(), String> {
+		let mut axiom: Axiom = Axiom::from("ABA")?;
+		let rule: Rule = Rule::from("A->ABA")?;
+		axiom.apply(&rule);
+		
+		assert_eq!(format!("{:?}", axiom), "ABABABA");
+		
+		Ok(())
 	}
 }

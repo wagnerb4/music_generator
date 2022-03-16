@@ -35,11 +35,12 @@ pub mod error {
 }
 
 use error::RepresentationError;
+use std::collections::HashMap;
 use std::fmt;
 
 // #--- Atom ---#
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Atom {
     pub symbol: char,
 }
@@ -111,6 +112,23 @@ impl Axiom {
 
         self.atom_list = new_atom_list;
     }
+	
+	pub fn apply_ruleset(&mut self, ruleset: &RuleSet) {
+		let mut new_atom_list: Vec<Atom> = vec![];
+
+        for atom in &self.atom_list {
+			match ruleset.rules.get(&atom) {
+				Some(axiom) => {
+					for atom in &axiom.atom_list {
+						new_atom_list.push(*atom);
+					}
+				},
+				None => {new_atom_list.push(*atom)}
+			};
+        }
+
+        self.atom_list = new_atom_list;
+	}
 }
 
 impl fmt::Debug for Axiom {
@@ -151,9 +169,50 @@ impl fmt::Debug for Rule {
     }
 }
 
+pub struct RuleSet {
+    rules: HashMap<Atom, Axiom>,
+}
+
+impl RuleSet {
+    pub fn from(rule_list: Vec<Rule>) -> Result<RuleSet, RepresentationError> {
+        let mut rules: HashMap<Atom, Axiom> = HashMap::new();
+
+        for rule in rule_list {
+            match rules.insert(rule.lhs, rule.rhs) {
+                Some(_) => {
+                    return Err(RepresentationError::new(&format!(
+                        "RuleSet contains two Rules with the lhs-Atom '{:?}'",
+                        &rule.lhs
+                    )));
+                }
+                None => {}
+            }
+        }
+
+        return Ok(RuleSet { rules });
+    }
+}
+
+impl fmt::Debug for RuleSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+		let mut set_of_rules: Vec<(&Atom, &Axiom)> = self.rules.iter().collect();
+		set_of_rules.sort_by(|(lhs_1, _), (lhs_2, _)| lhs_1.cmp(lhs_2));
+		
+        write!(
+            f,
+            "{}",
+            set_of_rules
+                .iter()
+                .map(|(key, val)| format!("{:?}->{:?}", key, val))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Atom, Axiom, Rule};
+    use super::{Atom, Axiom, Rule, RuleSet};
 
     #[test]
     fn create_and_display_atom_test() -> Result<(), String> {
@@ -274,12 +333,50 @@ mod tests {
     }
 
     #[test]
+    fn create_and_display_ruleset_test() -> Result<(), String> {
+		assert_eq!(
+            format!("{:?}", RuleSet::from(vec![Rule::from("A->ABA")?])?),
+            "A->ABA"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                RuleSet::from(vec![Rule::from("A->ABA")?, Rule::from("B->BAB")?])?
+            ),
+            "A->ABA, B->BAB"
+        );
+        Ok(())
+    }
+	
+	#[test]
+    fn create_ruleset_with_same_axioms_test() {
+        match RuleSet::from(vec![Rule::from("A->ABA").unwrap(), Rule::from("A->BAB").unwrap()]) {
+            Err(e) => assert_eq!(
+                format!("{}", e),
+                "There was an Error with the Representation of an L-System Element: RuleSet contains two Rules with the lhs-Atom 'A'."
+            ),
+            Ok(_) => panic!("Created ruleset with same axioms side."),
+        }
+    }
+
+    #[test]
     fn apply_rule_to_axiom_test() -> Result<(), String> {
         let mut axiom: Axiom = Axiom::from("ABA")?;
         let rule: Rule = Rule::from("A->ABA")?;
         axiom.apply(&rule);
 
         assert_eq!(format!("{:?}", axiom), "ABABABA");
+
+        Ok(())
+    }
+	
+	#[test]
+    fn apply_ruleset_to_axiom_test() -> Result<(), String> {
+        let mut axiom: Axiom = Axiom::from("ABA")?;
+        let ruleset: RuleSet = RuleSet::from(vec![Rule::from("A->ABA")?, Rule::from("B->BAB")?])?;
+        axiom.apply_ruleset(&ruleset);
+
+        assert_eq!(format!("{:?}", axiom), "ABABABABA");
 
         Ok(())
     }

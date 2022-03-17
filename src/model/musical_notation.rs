@@ -1,9 +1,73 @@
 pub mod pitch {
     /**
-     * Defines the pitch of a note in cents.
+     * Defines the pitch of a note in Herz.
      */
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct Pitch(f64);
+	
+	pub mod temperament {
+		use super::Pitch;
+		
+		/* Different pitch standards.
+		 * The number always referes to
+		 * the frequency of A_4 in Herz.
+		 * Definitions are taken form Oxford Composer Companion JS Bach, 
+		 * pp. 369–372. Oxford University Press, 1999
+		 */
+		pub const STUTTGART_PITCH: f64 = 440.0;
+		pub const BAROQUE_PITCH: f64 = 415.0;
+		pub const CHORTON_PITCH: f64 = 466.0;
+		pub const CLASSICAL_PITCH: f64 = 429.5; // 427–430
+		
+		pub trait Temperament {
+			/**
+			 * Construct a new object of this Temperament
+			 * and use the given pitch standard as a reference
+			 * for the pitch creation.
+			 */
+			fn new(pitch_standard: f64) -> Self;
+			
+			/**
+			 * Get the pitch of a given scale-degree in a given octave using this Temperament.
+			 * octave referes to the number of the octave in scientific pitch notation can theoretically be lower than 0 or higher than 9
+			 * degree refers to the scale-degree of the note whose pitch should be calculated if the degree is lower than 1 or greater than 12 the relative pitches in
+			 * the respective octaves will be calculated
+			 * c c# d d# e f f# g g# a  a# h
+			 * 1 2  3 4  4 6 7  8 9  10 11 12
+			 */
+			fn get_pitch(&self, octave: i16, degree: i16) -> Option<Pitch>;
+		}
+		
+		pub struct EqualTemperament {
+			pitch_standard: f64,
+		}
+		
+		impl Temperament for EqualTemperament {
+			fn new(pitch_standard: f64) -> EqualTemperament {
+				EqualTemperament { pitch_standard }
+			}
+			
+			fn get_pitch(&self, octave: i16, degree: i16) -> Option<Pitch> {
+				let octave_intervall = (octave - 4) * 12;
+				let relative_a = 10 + octave_intervall;
+				let intervall_size = degree - relative_a;
+				return Some(Pitch(self.pitch_standard * 2_f64.powf(intervall_size as f64 / 12.0_f64)));
+			}
+		}
+		
+		#[cfg(test)]
+		mod tests {
+			use super::{Temperament, EqualTemperament, Pitch, STUTTGART_PITCH};
+			
+			#[test]
+			fn equal_temperament_test() {
+				let temp = EqualTemperament::new(STUTTGART_PITCH);
+				assert_eq!(format!("{:.3?}", temp.get_pitch(4, 10)), "Some(Pitch(440.000))");
+				assert_eq!(format!("{:.3?}", temp.get_pitch(4, 1)), "Some(Pitch(261.626))");
+			}
+		}
+		
+	}
 }
 
 pub mod duration {

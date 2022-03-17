@@ -95,7 +95,7 @@ impl Voice {
 
         let mut current_state: S = S::get_neutral_state();
 
-        for atom in &axiom.atom_list {
+        for atom in axiom.atoms() {
             match atom_types.get(&atom) {
                 Some(atom_type) => match atom_type {
                     AtomType::HasAction => voice.musical_elements.push(

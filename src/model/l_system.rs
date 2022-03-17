@@ -129,6 +129,10 @@ impl Axiom {
 
         self.atom_list = new_atom_list;
 	}
+	
+	pub fn atoms(&self) ->  std::slice::Iter<Atom> {
+		self.atom_list.iter()
+	}
 }
 
 impl fmt::Debug for Axiom {

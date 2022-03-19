@@ -112,27 +112,27 @@ impl Axiom {
 
         self.atom_list = new_atom_list;
     }
-	
-	pub fn apply_ruleset(&mut self, ruleset: &RuleSet) {
-		let mut new_atom_list: Vec<Atom> = vec![];
+
+    pub fn apply_ruleset(&mut self, ruleset: &RuleSet) {
+        let mut new_atom_list: Vec<Atom> = vec![];
 
         for atom in &self.atom_list {
-			match ruleset.rules.get(&atom) {
-				Some(axiom) => {
-					for atom in &axiom.atom_list {
-						new_atom_list.push(*atom);
-					}
-				},
-				None => {new_atom_list.push(*atom)}
-			};
+            match ruleset.rules.get(&atom) {
+                Some(axiom) => {
+                    for atom in &axiom.atom_list {
+                        new_atom_list.push(*atom);
+                    }
+                }
+                None => new_atom_list.push(*atom),
+            };
         }
 
         self.atom_list = new_atom_list;
-	}
-	
-	pub fn atoms(&self) ->  std::slice::Iter<Atom> {
-		self.atom_list.iter()
-	}
+    }
+
+    pub fn atoms(&self) -> std::slice::Iter<Atom> {
+        self.atom_list.iter()
+    }
 }
 
 impl fmt::Debug for Axiom {
@@ -199,9 +199,9 @@ impl RuleSet {
 
 impl fmt::Debug for RuleSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-		let mut set_of_rules: Vec<(&Atom, &Axiom)> = self.rules.iter().collect();
-		set_of_rules.sort_by(|(lhs_1, _), (lhs_2, _)| lhs_1.cmp(lhs_2));
-		
+        let mut set_of_rules: Vec<(&Atom, &Axiom)> = self.rules.iter().collect();
+        set_of_rules.sort_by(|(lhs_1, _), (lhs_2, _)| lhs_1.cmp(lhs_2));
+
         write!(
             f,
             "{}",
@@ -338,7 +338,7 @@ mod tests {
 
     #[test]
     fn create_and_display_ruleset_test() -> Result<(), String> {
-		assert_eq!(
+        assert_eq!(
             format!("{:?}", RuleSet::from(vec![Rule::from("A->ABA")?])?),
             "A->ABA"
         );
@@ -351,8 +351,8 @@ mod tests {
         );
         Ok(())
     }
-	
-	#[test]
+
+    #[test]
     fn create_ruleset_with_same_axioms_test() {
         match RuleSet::from(vec![Rule::from("A->ABA").unwrap(), Rule::from("A->BAB").unwrap()]) {
             Err(e) => assert_eq!(
@@ -373,8 +373,8 @@ mod tests {
 
         Ok(())
     }
-	
-	#[test]
+
+    #[test]
     fn apply_ruleset_to_axiom_test() -> Result<(), String> {
         let mut axiom: Axiom = Axiom::from("ABA")?;
         let ruleset: RuleSet = RuleSet::from(vec![Rule::from("A->ABA")?, Rule::from("B->BAB")?])?;

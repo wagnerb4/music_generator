@@ -1,5 +1,5 @@
 mod l_system;
-mod musical_notation;
+pub mod musical_notation;
 
 pub mod error {
     use std::error::Error;
@@ -71,7 +71,16 @@ pub trait Action<T: ActionState> {
 }
 
 use l_system::{Atom, Axiom};
+
+use musical_notation::pitch::Pitch;
+use musical_notation::volume::Volume;
+use musical_notation::MusicalElement;
+
 use std::collections::HashMap;
+
+use fundsp::audiounit::AudioUnit64;
+use fundsp::math::bpm_hz;
+use fundsp::sequencer::Sequencer;
 
 enum AtomType {
     NoAction,
@@ -81,7 +90,7 @@ enum AtomType {
 }
 
 pub struct Voice {
-    musical_elements: Vec<musical_notation::MusicalElement>,
+    musical_elements: Vec<MusicalElement>,
 }
 
 impl Voice {
@@ -110,5 +119,48 @@ impl Voice {
         }
 
         return Ok(voice);
+    }
+
+    fn get_len(&self) -> u16 {
+        let mut len: u16 = 0;
+
+        for musical_element in &self.musical_elements {
+            len += musical_element.get_duration().get_time_units();
+        }
+
+        return len;
+    }
+
+    pub fn sequence<T>(&self, sequencer: &mut Sequencer, bpm: f64, create_audio_unit: T)
+    where
+        T: Fn(Pitch, Volume) -> Box<dyn AudioUnit64>,
+    {
+        let length = self.get_len();
+        let bpm_in_hz: f64 = bpm_hz(bpm);
+        let mut last_time_unit: u16 = 0;
+
+        for musical_element in &self.musical_elements {
+            match musical_element {
+                MusicalElement::Rest { duration } => {
+                    last_time_unit += duration.get_time_units();
+                }
+                MusicalElement::Note {
+                    pitch,
+                    duration,
+                    volume,
+                } => {
+                    let time_note_starts: f64 = last_time_unit as f64 / bpm_in_hz;
+                    last_time_unit += duration.get_time_units();
+                    let time_note_stops: f64 = last_time_unit as f64 / bpm_in_hz;
+                    sequencer.add64(
+                        time_note_starts,
+                        time_note_stops,
+                        0.2,
+                        0.2,
+                        create_audio_unit(*pitch, *volume),
+                    );
+                }
+            }
+        }
     }
 }

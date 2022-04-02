@@ -44,7 +44,7 @@ pub mod pitch {
              * position refers to the position of the tone whose pitch should be calculated. If the position is lower than 1 or greater than 12 the relative pitches in
              * the respective octaves will be calculated
              * pitch:    c c# d d# e f f# g g# a  a# h
-             * position: 1 2  3 4  4 6 7  8 9  10 11 12
+             * position: 1 2  3 4  5 6 7  8 9  10 11 12
              */
             fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch>;
         }
@@ -71,8 +71,10 @@ pub mod pitch {
             }
         }
 
+        //                                      c  d  e  f  g  a  b  c
         const SEMITONES_IN_MAJOR_SCALE: [u8; 7] = [2, 2, 1, 2, 2, 2, 1];
 
+        #[derive(Debug)]
         pub enum Accidental {
             Flat,
             Natural,
@@ -132,57 +134,103 @@ pub mod pitch {
                 }
             }
 
+            /**
+             * Get the key of the respective position in the twelve-tone system.
+             * position a position of 1 or 13 indicates the key of do
+             * major is a boolean value indicating whether the key is intended to
+             * to be used as a minor or major scale
+             */
             fn key_by_position(&self, position: u8, major: bool) -> Option<Key<T>> {
                 let mut position: i8 = (position as i8) - 1;
                 position %= 12;
+                position += 1;
 
                 let temperament: &T = self.get_temperament();
 
-                match position {
-                    0 => Some(Key::Do(&Accidental::Natural, temperament)),
-                    1 => Some(match major {
+                let key = match position {
+                    1 => Some(Key::Do(&Accidental::Natural, temperament)),
+                    2 => Some(match major {
                         true => Key::Do(&Accidental::Sharp, temperament),
                         false => Key::Re(&Accidental::Flat, temperament),
                     }),
-                    2 => Some(Key::Re(&Accidental::Natural, temperament)),
-                    3 => Some(match major {
+                    3 => Some(Key::Re(&Accidental::Natural, temperament)),
+                    4 => Some(match major {
                         true => Key::Re(&Accidental::Sharp, temperament),
                         false => Key::Mi(&Accidental::Flat, temperament),
                     }),
-                    4 => Some(Key::Mi(&Accidental::Natural, temperament)),
-                    5 => Some(Key::Fa(&Accidental::Natural, temperament)),
-                    6 => Some(match major {
+                    5 => Some(Key::Mi(&Accidental::Natural, temperament)),
+                    6 => Some(Key::Fa(&Accidental::Natural, temperament)),
+                    7 => Some(match major {
                         true => Key::Fa(&Accidental::Sharp, temperament),
                         false => Key::Sol(&Accidental::Flat, temperament),
                     }),
-                    7 => Some(Key::Sol(&Accidental::Natural, temperament)),
-                    8 => Some(match major {
+                    8 => Some(Key::Sol(&Accidental::Natural, temperament)),
+                    9 => Some(match major {
                         true => Key::Sol(&Accidental::Sharp, temperament),
                         false => Key::La(&Accidental::Flat, temperament),
                     }),
-                    9 => Some(Key::La(&Accidental::Natural, temperament)),
-                    10 => Some(match major {
+                    10 => Some(Key::La(&Accidental::Natural, temperament)),
+                    11 => Some(match major {
                         true => Key::La(&Accidental::Sharp, temperament),
                         false => Key::Ti(&Accidental::Flat, temperament),
                     }),
-                    11 => Some(Key::Ti(&Accidental::Natural, temperament)),
+                    12 => Some(Key::Ti(&Accidental::Natural, temperament)),
                     _ => None,
+                };
+
+                return key;
+            }
+
+            fn get_degree(&self, position: u8) -> Option<u8> {
+                let mut position = position - 1;
+                position %= 12;
+                position += 1;
+                dbg!(position);
+
+                for degree in 1..8 {
+                    let mut position_of_degree = self.get_position(degree) - 1;
+                    position_of_degree %= 12;
+                    position_of_degree += 1;
+
+                    if position == position_of_degree {
+                        return Some(degree);
+                    }
                 }
+
+                return None;
             }
 
             /**
              * Get the position of the tone in the twelve-tone system based
-             * on the given scale-degree. For the Key of Mi the positions for the
+             * on the given scale-degree of the major scale.
+             * For the Key of Mi the positions for the
              * degrees from 1 to 7 would be the following.
              * degree:   1  2  3  4  5  6  7 |  8 / 1
              * position: 4  6  8  9 11 13 15 | 16 (-12 = 4)
              *             +2 +2 +1 +2 +2 +2 | +1
              */
             fn get_position(&self, degree: u8) -> u8 {
-                let end: u8 = self.get_index() + (degree - 1);
+                dbg!(self.get_index());
+                dbg!(self.get_accidental());
+                dbg!(degree);
+                let mut end: usize = (0 + degree - 1) as usize;
 
-                let mut position: i8 =
-                    SEMITONES_IN_MAJOR_SCALE[0..end as usize].iter().sum::<u8>() as i8;
+                let mut position: i8 = 0;
+
+                if end > 7 {
+                    end -= 7;
+                    let octaves: i8 = end as i8 / 7;
+                    end %= 7;
+                    position += (octaves + 1) * 12;
+                    position += SEMITONES_IN_MAJOR_SCALE[0..end].iter().sum::<u8>() as i8;
+                } else {
+                    position = SEMITONES_IN_MAJOR_SCALE[0..end].iter().sum::<u8>() as i8;
+                }
+
+                let offset = SEMITONES_IN_MAJOR_SCALE[0..self.get_index() as usize]
+                    .iter()
+                    .sum::<u8>() as i8;
+                position += offset;
 
                 position = match self.get_accidental() {
                     Accidental::Flat => position - 1,
@@ -190,7 +238,7 @@ pub mod pitch {
                     Accidental::Sharp => position + 1,
                 };
 
-                return (position + 1) as u8;
+                return dbg!(position + 1) as u8;
             }
 
             /**
@@ -208,7 +256,7 @@ pub mod pitch {
 
                 let mut pitches: Vec<Pitch> = vec![];
 
-                for degree in 1..(number_of_pitches + 1) {
+                for degree in degree..(degree + number_of_pitches) {
                     match temperament.get_pitch(octave, self.get_position(degree) as i16) {
                         Some(pitch) => pitches.push(pitch),
                         None => return None,
@@ -224,13 +272,13 @@ pub mod pitch {
                 degree: u8,
                 number_of_pitches: u8,
             ) -> Option<Vec<Pitch>> {
-                let mut degree: i8 = (degree - 1) as i8;
-                degree -= 3;
-                degree %= 7;
-                degree += 1;
-
-                match self.key_by_position(self.get_position(1 + 3), false) {
-                    Some(minor) => minor.get_major_scale(octave, degree as u8, number_of_pitches),
+                let tonic = self.get_position(1);
+                match self.key_by_position(tonic + 3, false) {
+                    Some(minor) => minor.get_major_scale(
+                        octave - 1,
+                        minor.get_degree(tonic).unwrap() + (degree - 1),
+                        number_of_pitches,
+                    ),
                     None => None,
                 }
             }
@@ -286,6 +334,44 @@ pub mod pitch {
                     format!("{:.3?}", temp.get_pitch(5, -11)),
                     "Some(Pitch(261.626))"
                 );
+            }
+
+            #[test]
+            fn test_get_position() {
+                let temp = EqualTemperament::new(STUTTGART_PITCH);
+                let key = Key::Do(&Accidental::Natural, &temp);
+                assert_eq!(key.get_position(1), 1); // c
+                assert_eq!(key.get_position(2), 3); // d
+                assert_eq!(key.get_position(3), 5); // e
+                assert_eq!(key.get_position(4), 6); // f
+                assert_eq!(key.get_position(5), 8); // g
+                assert_eq!(key.get_position(6), 10); // a
+                assert_eq!(key.get_position(7), 12); // b
+                assert_eq!(key.get_position(8), 13); // c
+                assert_eq!(key.get_position(9), 15); // d
+                assert_eq!(key.get_position(10), 17); // e
+                assert_eq!(key.get_position(11), 18); // f
+                assert_eq!(key.get_position(12), 20); // g
+                assert_eq!(key.get_position(13), 22); // a
+                assert_eq!(key.get_position(14), 24); // b
+                assert_eq!(key.get_position(15), 25); // c
+
+                let key = Key::Sol(&Accidental::Natural, &temp);
+                assert_eq!(key.get_position(1), 8); // g
+                assert_eq!(key.get_position(2), 10); // a
+                assert_eq!(key.get_position(3), 12); // b
+                assert_eq!(key.get_position(4), 13); // c
+                assert_eq!(key.get_position(5), 15); // d
+                assert_eq!(key.get_position(6), 17); // e
+                assert_eq!(key.get_position(7), 19); // f#
+                assert_eq!(key.get_position(8), 20); // g
+                assert_eq!(key.get_position(9), 22); // a
+                assert_eq!(key.get_position(10), 24); // b
+                assert_eq!(key.get_position(11), 25); // c
+                assert_eq!(key.get_position(12), 27); // d
+                assert_eq!(key.get_position(13), 29); // e
+                assert_eq!(key.get_position(14), 31); // f#
+                assert_eq!(key.get_position(15), 32); // g
             }
 
             #[test]
@@ -350,6 +436,54 @@ pub mod pitch {
                         assert_eq!(
                             format!("{:.3?}", pitches[7]),
                             "Pitch(739.989)" /*(+2=9) Gb_5*/
+                        );
+                    }
+                    None => panic!("expected some pitches"),
+                }
+            }
+
+            #[test]
+            fn test_key_f_sharp_minor() {
+                let temp = EqualTemperament::new(STUTTGART_PITCH);
+                let key = Key::Fa(&Accidental::Sharp, &temp);
+                match key.get_minor_scale(4, 1, 8) {
+                    Some(pitches) => {
+                        assert_eq!(pitches.len(), 8);
+
+                        // major [2, 2, 1, 2, 2, 2, 1]
+                        // minor [2, 1, 2, 2, 1, 2, 2]
+
+                        assert_eq!(
+                            format!("{:.3?}", pitches[0]),
+                            "Pitch(369.994)" /*(+0=-3) F#_4*/
+                        );
+                        assert_eq!(
+                            format!("{:.3?}", pitches[1]),
+                            "Pitch(415.305)" /*(+2=-1) G#_4*/
+                        );
+                        assert_eq!(
+                            format!("{:.3?}", pitches[2]),
+                            "Pitch(440.000)" /*(+1=0) A_4*/
+                        );
+                        assert_eq!(
+                            format!("{:.3?}", pitches[3]),
+                            "Pitch(493.883)" /*(+2=2) B_4*/
+                        );
+                        assert_eq!(
+                            format!("{:.3?}", pitches[4]),
+                            "Pitch(554.365)" /*(+2=4) C#_5*/
+                        );
+                        assert_eq!(
+                            format!("{:.3?}", pitches[5]),
+                            "Pitch(587.330)" /*(+1=5) D_5*/
+                        );
+                        assert_eq!(
+                            format!("{:.3?}", pitches[6]),
+                            "Pitch(659.255)" /*(+2=7) E_5*/
+                        );
+                        assert_eq!(
+                            format!("{:.3?}", pitches[7]),
+                            "Pitch(739.989)" /*(+2=9) F#_5*/
                         );
                     }
                     None => panic!("expected some pitches"),

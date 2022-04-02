@@ -63,18 +63,76 @@ pub trait ActionState {
     fn pop(&mut self) -> Result<(), ActionError>;
 }
 
+pub struct NeutralActionState {}
+
+impl ActionState for NeutralActionState {
+    fn get_neutral_state() -> NeutralActionState {
+        NeutralActionState {}
+    }
+    fn push(&self) {}
+    fn pop(&mut self) -> Result<(), ActionError> {
+        Ok(())
+    }
+}
+
+use musical_notation::MusicalElement;
+
 pub trait Action<T: ActionState> {
     fn gen_next_musical_element(
+        &self,
         symbol: char,
         state: &mut T,
-    ) -> Result<musical_notation::MusicalElement, ActionError>;
+    ) -> Result<MusicalElement, ActionError>;
+}
+
+pub struct SimpleAction {}
+
+/*
+impl Action<NeutralActionState> for SimpleAction {
+    fn gen_next_musical_element(
+        symbol: char,
+        ,
+    ) -> Result<MusicalElement, ActionError> {
+        match symbol {
+            '0'
+        }
+    }
+}
+*/
+
+use std::cell::RefCell;
+use std::cell::RefMut;
+
+/**
+ * Generates a simple action, that maps the 26 upper case
+ * letters A to Z and the 23 lower case letters a to w in that
+ * order to the notes of seven consecutive octaves of the given key.
+ * The letter x will be mapped to a rest.
+ * key can be an Integer from 1 to 12
+ */
+pub fn generate_simple_action(
+    key: u8,
+) -> Box<dyn Fn(char, RefMut<NeutralActionState>) -> Result<MusicalElement, ActionError>> {
+    Box::new(
+        |symbol: char, state: RefMut<NeutralActionState>| -> Result<MusicalElement, ActionError> {
+            Err(ActionError::from_error_kind(&ErrorKind::GenerationError))
+        },
+    )
+}
+
+enum AtomType<S: ActionState> {
+    NoAction,
+    HasAction {
+        action: Box<dyn Fn(char, RefMut<S>) -> Result<MusicalElement, ActionError>>,
+    },
+    PushStack,
+    PopStack,
 }
 
 use l_system::{Atom, Axiom};
 
 use musical_notation::pitch::Pitch;
 use musical_notation::volume::Volume;
-use musical_notation::MusicalElement;
 
 use std::collections::HashMap;
 
@@ -82,36 +140,29 @@ use fundsp::audiounit::AudioUnit64;
 use fundsp::math::bpm_hz;
 use fundsp::sequencer::Sequencer;
 
-enum AtomType {
-    NoAction,
-    HasAction,
-    PushStack,
-    PopStack,
-}
-
 pub struct Voice {
     musical_elements: Vec<MusicalElement>,
 }
 
 impl Voice {
-    fn from<S: ActionState, A: Action<S>>(
+    fn from<S: ActionState>(
         axiom: &Axiom,
-        atom_types: HashMap<Atom, AtomType>,
+        atom_types: HashMap<Atom, AtomType<S>>,
     ) -> Result<Voice, ActionError> {
         let mut voice = Voice {
             musical_elements: vec![],
         };
 
-        let mut current_state: S = S::get_neutral_state();
+        let mut current_state: RefCell<S> = RefCell::new(S::get_neutral_state());
 
         for atom in axiom.atoms() {
             match atom_types.get(&atom) {
                 Some(atom_type) => match atom_type {
-                    AtomType::HasAction => voice.musical_elements.push(
-                        A::gen_next_musical_element(atom.symbol, &mut current_state)?,
-                    ),
-                    AtomType::PushStack => current_state.push(),
-                    AtomType::PopStack => current_state.pop()?,
+                    AtomType::HasAction { action } => voice
+                        .musical_elements
+                        .push(action(atom.symbol, current_state.borrow_mut())?),
+                    AtomType::PushStack => current_state.borrow().push(),
+                    AtomType::PopStack => current_state.borrow_mut().pop()?,
                     AtomType::NoAction => {}
                 },
                 None => return Err(ActionError::from_error_kind(&ErrorKind::UndefinedAtomType)),

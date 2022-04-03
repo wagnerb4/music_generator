@@ -71,8 +71,9 @@ pub mod pitch {
             }
         }
 
-        //                                      c  d  e  f  g  a  b  c
-        const SEMITONES_IN_MAJOR_SCALE: [u8; 7] = [2, 2, 1, 2, 2, 2, 1];
+        const DEGREES_IN_SCALE: u8 = 7;
+        //                                                              c  d  e  f  g  a  b  c
+        const SEMITONES_IN_MAJOR_SCALE: [u8; DEGREES_IN_SCALE as usize] = [2, 2, 1, 2, 2, 2, 1];
 
         #[derive(Debug)]
         pub enum Accidental {
@@ -141,8 +142,8 @@ pub mod pitch {
              * to be used as a minor or major scale
              */
             fn key_by_position(&self, position: u8, major: bool) -> Option<Key<T>> {
-                let mut position: i8 = (position as i8) - 1;
-                position %= 12;
+                let mut position: u8 = position - 1;
+                position %= OCTAVE_ADDITIVE;
                 position += 1;
 
                 let temperament: &T = self.get_temperament();
@@ -183,13 +184,12 @@ pub mod pitch {
 
             fn get_degree(&self, position: u8) -> Option<u8> {
                 let mut position = position - 1;
-                position %= 12;
+                position %= OCTAVE_ADDITIVE;
                 position += 1;
-                dbg!(position);
 
-                for degree in 1..8 {
+                for degree in 1..(DEGREES_IN_SCALE + 1) {
                     let mut position_of_degree = self.get_position(degree) - 1;
-                    position_of_degree %= 12;
+                    position_of_degree %= OCTAVE_ADDITIVE;
                     position_of_degree += 1;
 
                     if position == position_of_degree {
@@ -210,26 +210,23 @@ pub mod pitch {
              *             +2 +2 +1 +2 +2 +2 | +1
              */
             fn get_position(&self, degree: u8) -> u8 {
-                dbg!(self.get_index());
-                dbg!(self.get_accidental());
-                dbg!(degree);
-                let mut end: usize = (0 + degree - 1) as usize;
+                let mut end: u8 = degree - 1;
 
-                let mut position: i8 = 0;
+                let mut position: u8 = 0;
 
-                if end > 7 {
-                    end -= 7;
-                    let octaves: i8 = end as i8 / 7;
-                    end %= 7;
-                    position += (octaves + 1) * 12;
-                    position += SEMITONES_IN_MAJOR_SCALE[0..end].iter().sum::<u8>() as i8;
+                if end > DEGREES_IN_SCALE {
+                    end -= DEGREES_IN_SCALE;
+                    let octaves: u8 = end / DEGREES_IN_SCALE;
+                    end %= DEGREES_IN_SCALE;
+                    position += (octaves + 1) * OCTAVE_ADDITIVE;
+                    position += SEMITONES_IN_MAJOR_SCALE[0..end as usize].iter().sum::<u8>();
                 } else {
-                    position = SEMITONES_IN_MAJOR_SCALE[0..end].iter().sum::<u8>() as i8;
+                    position = SEMITONES_IN_MAJOR_SCALE[0..end as usize].iter().sum::<u8>();
                 }
 
                 let offset = SEMITONES_IN_MAJOR_SCALE[0..self.get_index() as usize]
                     .iter()
-                    .sum::<u8>() as i8;
+                    .sum::<u8>();
                 position += offset;
 
                 position = match self.get_accidental() {
@@ -238,7 +235,7 @@ pub mod pitch {
                     Accidental::Sharp => position + 1,
                 };
 
-                return dbg!(position + 1) as u8;
+                return position + 1;
             }
 
             /**
@@ -274,11 +271,19 @@ pub mod pitch {
             ) -> Option<Vec<Pitch>> {
                 let tonic = self.get_position(1);
                 match self.key_by_position(tonic + 3, false) {
-                    Some(minor) => minor.get_major_scale(
-                        octave - 1,
-                        minor.get_degree(tonic).unwrap() + (degree - 1),
-                        number_of_pitches,
-                    ),
+                    Some(minor) => {
+                        let mapped_tonic_degree = minor.get_degree(tonic).unwrap();
+                        let mapped_tonic = minor.get_position(mapped_tonic_degree);
+
+                        let octave = octave
+                            + ((tonic as i8 - mapped_tonic as i8) / OCTAVE_ADDITIVE as i8) as i16;
+
+                        return minor.get_major_scale(
+                            octave,
+                            mapped_tonic_degree + (degree - 1),
+                            number_of_pitches,
+                        );
+                    }
                     None => None,
                 }
             }
@@ -289,12 +294,14 @@ pub mod pitch {
                 degree: u8,
                 number_of_pitches: u8,
             ) -> Option<Vec<Pitch>> {
-                let mut degree: i8 = (degree - 1) as i8;
+                let mut degree = degree - 1;
                 degree -= 5;
-                degree %= 7;
+                degree %= DEGREES_IN_SCALE;
                 degree += 1;
 
-                match self.key_by_position(self.get_position(1 + 5), false) {
+                let submediant = self.get_position(1 + 5);
+
+                match self.key_by_position(submediant, false) {
                     Some(relative_minor) => {
                         relative_minor.get_major_scale(octave, degree as u8, number_of_pitches)
                     }

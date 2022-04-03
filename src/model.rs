@@ -75,6 +75,8 @@ impl ActionState for NeutralActionState {
     }
 }
 
+use musical_notation::pitch::temperament::EqualTemperament;
+use musical_notation::pitch::{Accidental, Key};
 use musical_notation::MusicalElement;
 
 pub trait Action<T: ActionState> {
@@ -110,8 +112,8 @@ use std::cell::RefMut;
  * The letter x will be mapped to a rest.
  * key can be an Integer from 1 to 12
  */
-pub fn generate_simple_action(
-    key: u8,
+pub fn generate_simple_action<'a>(
+    key: Key<'a, EqualTemperament>,
 ) -> Box<dyn Fn(char, RefMut<NeutralActionState>) -> Result<MusicalElement, ActionError>> {
     Box::new(
         |symbol: char, state: RefMut<NeutralActionState>| -> Result<MusicalElement, ActionError> {

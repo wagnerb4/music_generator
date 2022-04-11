@@ -1,4 +1,4 @@
-mod l_system;
+pub mod l_system;
 pub mod musical_notation;
 
 pub mod error {
@@ -76,7 +76,7 @@ impl ActionState for NeutralActionState {
 }
 
 use musical_notation::pitch::temperament::EqualTemperament;
-use musical_notation::pitch::{Accidental, Key};
+use musical_notation::pitch::Key;
 use musical_notation::MusicalElement;
 
 pub trait Action<T: ActionState> {
@@ -104,6 +104,7 @@ impl Action<NeutralActionState> for SimpleAction {
 
 use std::cell::RefCell;
 use std::cell::RefMut;
+use std::rc::Rc;
 
 /**
  * Generates a simple action, that maps the 26 upper case
@@ -114,18 +115,41 @@ use std::cell::RefMut;
  */
 pub fn generate_simple_action<'a>(
     key: Key<'a, EqualTemperament>,
-) -> Box<dyn Fn(char, RefMut<NeutralActionState>) -> Result<MusicalElement, ActionError>> {
-    Box::new(
-        |symbol: char, state: RefMut<NeutralActionState>| -> Result<MusicalElement, ActionError> {
-            Err(ActionError::from_error_kind(&ErrorKind::GenerationError))
-        },
-    )
+) -> Result<Rc<dyn Fn(char, RefMut<NeutralActionState>) -> Result<MusicalElement, ActionError>>, ActionError> {
+    if let Some(pitches) = key.get_major_scale(4, 1, 7 * 7) {
+		Ok(
+			Rc::new(
+				move |symbol: char, _state: RefMut<NeutralActionState>| -> Result<MusicalElement, ActionError> {
+					let mut char_pos = symbol as u16;
+					let char_pos_cap_a = 'A' as u16;
+					if char_pos < char_pos_cap_a {
+						Err(ActionError::from_error_kind(&ErrorKind::GenerationError))
+					} else {
+						char_pos = char_pos - char_pos_cap_a + 1;
+						if char_pos > 7*7 {
+							Err(ActionError::from_error_kind(&ErrorKind::GenerationError))
+						} else {
+							Ok(
+								MusicalElement::Note {
+									pitch: pitches[char_pos as usize],
+									duration: musical_notation::duration::Duration(1),
+									volume: musical_notation::volume::M
+								}
+							)
+						}
+					}
+				},
+			)
+		)
+	} else {
+		Err(ActionError::from_error_kind(&ErrorKind::GenerationError))
+	}
 }
 
-enum AtomType<S: ActionState> {
+pub enum AtomType<S: ActionState> {
     NoAction,
     HasAction {
-        action: Box<dyn Fn(char, RefMut<S>) -> Result<MusicalElement, ActionError>>,
+        action: Rc<dyn Fn(char, RefMut<S>) -> Result<MusicalElement, ActionError>>,
     },
     PushStack,
     PopStack,
@@ -147,15 +171,15 @@ pub struct Voice {
 }
 
 impl Voice {
-    fn from<S: ActionState>(
+    pub fn from<S: ActionState>(
         axiom: &Axiom,
-        atom_types: HashMap<Atom, AtomType<S>>,
+        atom_types: HashMap<&Atom, AtomType<S>>,
     ) -> Result<Voice, ActionError> {
         let mut voice = Voice {
             musical_elements: vec![],
         };
 
-        let mut current_state: RefCell<S> = RefCell::new(S::get_neutral_state());
+        let current_state: RefCell<S> = RefCell::new(S::get_neutral_state());
 
         for atom in axiom.atoms() {
             match atom_types.get(&atom) {
@@ -184,12 +208,11 @@ impl Voice {
         return len;
     }
 
-    pub fn sequence<T>(&self, sequencer: &mut Sequencer, bpm: f64, create_audio_unit: T)
+    pub fn sequence<T>(&self, sequencer: &mut Sequencer, bpm: u16, create_audio_unit: T)
     where
         T: Fn(Pitch, Volume) -> Box<dyn AudioUnit64>,
     {
-        let length = self.get_len();
-        let bpm_in_hz: f64 = bpm_hz(bpm);
+        let bpm_in_hz: f64 = bpm_hz(bpm as f64);
         let mut last_time_unit: u16 = 0;
 
         for musical_element in &self.musical_elements {

@@ -74,7 +74,7 @@ pub mod pitch {
 
         #[cfg(test)]
         mod tests {
-            use super::{EqualTemperament, Pitch, STUTTGART_PITCH};
+            use super::{Temperament, EqualTemperament, Pitch, STUTTGART_PITCH};
 
             #[test]
             fn equal_temperament_test() {
@@ -519,7 +519,7 @@ pub mod duration {
      * that the MusicalElement is played for.
      */
     #[derive(Debug, Copy, Clone)]
-    pub struct Duration(u16);
+    pub struct Duration(pub u16);
 
     impl Duration {
         pub fn get_time_units(&self) -> u16 {
@@ -531,6 +531,12 @@ pub mod duration {
 pub mod volume {
     #[derive(Debug, Copy, Clone)]
     pub struct Volume(u8);
+	
+	impl Volume {
+		pub fn get(&self) -> u8 {
+			self.0
+		}
+	}
 
     const STEP_SIZE: u8 = 28;
     pub const SILENT: Volume = Volume(0);

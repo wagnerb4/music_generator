@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod model;
 
 use model::musical_notation::pitch::{

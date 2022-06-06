@@ -1,7 +1,7 @@
 mod pitch;
 pub use pitch::temperament::{EqualTemperament, Temperament};
 pub use pitch::temperament::{BAROQUE_PITCH, CHORTON_PITCH, CLASSICAL_PITCH, STUTTGART_PITCH};
-pub use pitch::{Accidental, Key, Note, Pitch};
+pub use pitch::{Accidental, Key, Note, Pitch, ScaleKind};
 
 mod duration;
 pub use duration::Duration;
@@ -10,6 +10,7 @@ mod volume;
 pub use volume::Volume;
 pub use volume::{F, FF, FFF, M, MF, MP, P, PP, PPP, SILENT};
 
+#[derive(Debug)]
 pub enum MusicalElement {
     Rest {
         duration: Duration,

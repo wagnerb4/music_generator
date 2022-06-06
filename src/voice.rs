@@ -13,12 +13,22 @@ pub enum ErrorKind {
     GenerationError,
 }
 
+#[derive(Debug)]
 pub struct Voice {
     musical_elements: Vec<notation::MusicalElement>,
 }
 
 impl Voice {
-    pub fn get_len(&self) -> u16 {
+    pub fn from_musical_elements(musical_elements: Vec<notation::MusicalElement>) -> Voice {
+        Voice { musical_elements }
+    }
+
+    pub fn get_duration(&self, bpm: u16) -> f64 {
+        let length = self.get_len();
+        return length as f64 / bpm_hz(bpm as f64);
+    }
+
+    fn get_len(&self) -> u16 {
         let mut len: u16 = 0;
 
         for musical_element in &self.musical_elements {

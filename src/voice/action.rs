@@ -1,6 +1,6 @@
 /* This module models the actions
- * that the Atoms of an Axiom used to
- * build a Voice can do.
+ * that the Atoms of an Axiom, used to
+ * build a Voice, can do.
  */
 
 use crate::l_system::{Atom, Axiom};
@@ -102,12 +102,12 @@ impl ActionState for NeutralActionState {
  */
 pub struct SimpleAction<T: notation::Temperament> {
     key: notation::Key<T>,
-    major: bool,
+    scale_kind: &'static notation::ScaleKind,
 }
 
 impl<T: notation::Temperament> SimpleAction<T> {
-    pub fn new(key: notation::Key<T>, major: bool) -> Self {
-        SimpleAction { key, major }
+    pub fn new(key: notation::Key<T>, scale_kind: &'static notation::ScaleKind) -> Self {
+        SimpleAction { key, scale_kind }
     }
 }
 
@@ -117,10 +117,7 @@ impl<T: notation::Temperament> Action<NeutralActionState> for SimpleAction<T> {
         symbol: char,
         _state: RefMut<NeutralActionState>,
     ) -> Result<notation::MusicalElement, error::ActionError> {
-        if let Some(pitches) = match self.major {
-            true => self.key.get_major_scale(4, 1, 7 * 7),
-            false => self.key.get_minor_scale(4, 1, 7 * 7),
-        } {
+        if let Some(pitches) = self.key.get_scale(self.scale_kind, 4, 1, 7 * 7) {
             let mut char_pos = symbol as u16;
             let char_pos_cap_a = 'A' as u16;
             if char_pos < char_pos_cap_a {

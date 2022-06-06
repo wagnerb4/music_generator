@@ -384,4 +384,21 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn dragon_curve_test() -> Result<(), String> {
+        let mut axiom: Axiom = Axiom::from("FL")?;
+        let ruleset: RuleSet = RuleSet::from(vec![Rule::from("L->L+KF")?, Rule::from("K->FL-K")?])?;
+
+        axiom.apply_ruleset(&ruleset);
+        assert_eq!(format!("{:?}", axiom), "FL+KF");
+
+        axiom.apply_ruleset(&ruleset);
+        assert_eq!(format!("{:?}", axiom), "FL+KF+FL-KF");
+
+        axiom.apply_ruleset(&ruleset);
+        assert_eq!(format!("{:?}", axiom), "FL+KF+FL-KF+FL+KF-FL-KF");
+
+        Ok(())
+    }
 }

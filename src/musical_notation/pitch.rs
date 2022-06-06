@@ -9,7 +9,7 @@ pub mod temperament;
  * Defines the pitch of a note in Herz.
  */
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub struct Pitch(f64);
+pub struct Pitch(pub f64);
 
 impl Pitch {
     pub fn get_hz(&self) -> f64 {
@@ -55,6 +55,7 @@ impl Note {
 pub enum ScaleKind {
     Major,
     Minor,
+    RelativeMinor,
     Chromatic,
 }
 
@@ -183,74 +184,83 @@ where
     }
 
     /**
-     * Calculate an array of consecutive pitches of the major scale using the given Temperament.
+     * Calculate an array of consecutive pitches of the given scale using the given Temperament.
      * The Pitches will start in the given octave with the given scale-degree and comprise the given
      * number of pitches.
      */
-    pub fn get_major_scale(
+    pub fn get_scale(
         &self,
+        scale_kind: &'static ScaleKind,
         octave: i16,
         degree: u8,
         number_of_pitches: u8,
     ) -> Option<Vec<Pitch>> {
-        let mut pitches: Vec<Pitch> = vec![];
+        match scale_kind {
+            ScaleKind::Major => {
+                let mut pitches: Vec<Pitch> = vec![];
 
-        for degree in degree..(degree + number_of_pitches) {
-            match self
-                .temperament
-                .get_pitch(octave, self.get_position(degree) as i16)
-            {
-                Some(pitch) => pitches.push(pitch),
-                None => return None,
+                for degree in degree..(degree + number_of_pitches) {
+                    match self
+                        .temperament
+                        .get_pitch(octave, self.get_position(degree) as i16)
+                    {
+                        Some(pitch) => pitches.push(pitch),
+                        None => return None,
+                    }
+                }
+
+                return Some(pitches);
             }
-        }
+            ScaleKind::RelativeMinor => {
+                let mut degree = degree - 1;
+                degree -= 5;
+                degree %= DEGREES_IN_SCALE;
+                degree += 1;
 
-        return Some(pitches);
-    }
+                let submediant = self.get_position(1 + 5);
 
-    pub fn get_minor_scale(
-        &self,
-        octave: i16,
-        degree: u8,
-        number_of_pitches: u8,
-    ) -> Option<Vec<Pitch>> {
-        let tonic = self.get_position(1);
-        match self.key_by_position(tonic + 3, false) {
-            Some(minor) => {
-                let mapped_tonic_degree = minor.get_degree(tonic).unwrap();
-                let mapped_tonic = minor.get_position(mapped_tonic_degree);
-
-                let octave =
-                    octave + ((tonic as i8 - mapped_tonic as i8) / OCTAVE_ADDITIVE as i8) as i16;
-
-                return minor.get_major_scale(
-                    octave,
-                    mapped_tonic_degree + (degree - 1),
-                    number_of_pitches,
-                );
+                match self.key_by_position(submediant, false) {
+                    Some(relative_minor) => relative_minor.get_scale(
+                        &ScaleKind::Major,
+                        octave,
+                        degree as u8,
+                        number_of_pitches,
+                    ),
+                    None => None,
+                }
             }
-            None => None,
-        }
-    }
+            ScaleKind::Minor => {
+                let tonic = self.get_position(1);
+                match self.key_by_position(tonic + 3, false) {
+                    Some(minor) => {
+                        let mapped_tonic_degree = minor.get_degree(tonic).unwrap();
+                        let mapped_tonic = minor.get_position(mapped_tonic_degree);
 
-    pub fn get_relative_minor_scale(
-        &self,
-        octave: i16,
-        degree: u8,
-        number_of_pitches: u8,
-    ) -> Option<Vec<Pitch>> {
-        let mut degree = degree - 1;
-        degree -= 5;
-        degree %= DEGREES_IN_SCALE;
-        degree += 1;
+                        let octave = octave
+                            + ((tonic as i8 - mapped_tonic as i8) / OCTAVE_ADDITIVE as i8) as i16;
 
-        let submediant = self.get_position(1 + 5);
-
-        match self.key_by_position(submediant, false) {
-            Some(relative_minor) => {
-                relative_minor.get_major_scale(octave, degree as u8, number_of_pitches)
+                        return minor.get_scale(
+                            &ScaleKind::Major,
+                            octave,
+                            mapped_tonic_degree + (degree - 1),
+                            number_of_pitches,
+                        );
+                    }
+                    None => None,
+                }
             }
-            None => None,
+            ScaleKind::Chromatic => {
+                let mut pitches: Vec<Pitch> = vec![];
+
+                for degree in degree..(degree + number_of_pitches) {
+                    match self.temperament.get_pitch(octave, degree as i16) {
+                        Some(pitch) => pitches.push(pitch),
+                        None => return None,
+                    }
+                }
+
+                return Some(pitches);
+            }
         }
     }
 }
@@ -259,7 +269,7 @@ where
 mod tests {
     use super::{
         temperament::EqualTemperament, temperament::Temperament, temperament::STUTTGART_PITCH,
-        Accidental, Key, Note,
+        Accidental, Key, Note, ScaleKind,
     };
 
     use std::rc::Rc;
@@ -307,7 +317,7 @@ mod tests {
     fn test_key_c_natural_major() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let key = Key::new(&Note::C, &Accidental::Natural, temp);
-        match key.get_major_scale(4, 1, 8) {
+        match key.get_scale(&ScaleKind::Major, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
                 assert_eq!(format!("{:.3?}", pitches[0]), "Pitch(261.626)" /*C_4*/);
@@ -327,7 +337,7 @@ mod tests {
     fn test_key_g_flat_minor() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let key = Key::new(&Note::G, &Accidental::Flat, temp);
-        match key.get_minor_scale(4, 1, 8) {
+        match key.get_scale(&ScaleKind::Minor, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
 
@@ -375,7 +385,7 @@ mod tests {
     fn test_key_f_sharp_minor() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let key = Key::new(&Note::F, &Accidental::Sharp, temp);
-        match key.get_minor_scale(4, 1, 8) {
+        match key.get_scale(&ScaleKind::Minor, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
 

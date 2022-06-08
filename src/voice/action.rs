@@ -125,8 +125,8 @@ impl<T: notation::Temperament> Action<NeutralActionState> for SimpleAction<T> {
                     &super::ErrorKind::GenerationError,
                 ))
             } else {
-                char_pos = char_pos - char_pos_cap_a + 1;
-                if char_pos > 7 * 7 {
+                char_pos = char_pos - char_pos_cap_a;
+                if char_pos >= 7 * 7 {
                     if symbol == 'x' {
                         Ok(notation::MusicalElement::Rest {
                             duration: notation::Duration(1),

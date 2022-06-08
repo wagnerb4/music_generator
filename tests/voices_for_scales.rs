@@ -1,6 +1,6 @@
 use music_generator::musical_notation::{
-    Accidental, Duration, EqualTemperament, Key, MusicalElement, Note, Pitch, Temperament, Volume,
-    M, STUTTGART_PITCH, ScaleKind,
+    Accidental, Duration, EqualTemperament, Key, MusicalElement, Note, Pitch, ScaleKind,
+    Temperament, Volume, M, STUTTGART_PITCH,
 };
 
 use music_generator::voice::action::{Action, AtomType, NeutralActionState, SimpleAction};
@@ -22,7 +22,7 @@ fn mff(frequency: f64) -> MusicalElement {
 }
 
 fn sequence_helper(voice: Voice) {
-	let sample_rate = 44100.0;
+    let sample_rate = 44100.0;
     let mut sequencer = Sequencer::new(sample_rate, 2);
 
     let env = || envelope(|t| cos(t));
@@ -32,9 +32,9 @@ fn sequence_helper(voice: Voice) {
     };
 
     let bpm = 120;
-	voice.sequence(&mut sequencer, bpm, magic);
-	
-	let duration = voice.get_duration(bpm);
+    voice.sequence(&mut sequencer, bpm, magic);
+
+    let duration = voice.get_duration(bpm);
 
     let wave = Wave64::render(sample_rate, duration, &mut sequencer);
     // let wave = wave.filter(duration, &mut (reverb_stereo(0.1, 2.0) * 3.0));
@@ -58,7 +58,7 @@ fn sequence_helper(voice: Voice) {
 }
 
 #[test]
-fn voice_of_c_scale() {
+fn voice_of_d_flat_major_two_octave_scale() {
     let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
     let key = Key::new(&Note::C, &Accidental::Sharp, temp);
     let axiom: Axiom = Axiom::from("ABCDEFGHIJKLMNO").unwrap();
@@ -79,28 +79,29 @@ fn voice_of_c_scale() {
     }
 
     let voice_actual = Voice::from(&axiom, atom_types).unwrap();
+
     let voice_expected = Voice::from_musical_elements(vec![
-        mff(311.127),
-        mff(349.228),
-        mff(369.994),
-        mff(415.305),
-        mff(466.164),
-        mff(523.251),
-        mff(554.365),
-        mff(622.254),
-        mff(698.456),
-        mff(739.989),
-        mff(830.609),
-        mff(932.328),
-        mff(1046.502),
-        mff(1108.731),
-        mff(1244.508),
+        mff(277.183),  /*(+0=-8) Db_4*/
+        mff(311.127),  /*(+2=-6) Eb_4*/
+        mff(349.228),  /*(+2=-4) F_4*/
+        mff(369.994),  /*(+1=-3) Gb_4*/
+        mff(415.305),  /*(+2=-1) Ab_4*/
+        mff(466.164),  /*(+2=1) Bb_4*/
+        mff(523.251),  /*(+2=3) C_5*/
+        mff(554.365),  /*(+1=4) Db_5*/
+        mff(622.254),  /*(+2=6) Eb_5*/
+        mff(698.456),  /*(+2=8) F_5*/
+        mff(739.989),  /*(+1=9) Gb_5*/
+        mff(830.609),  /*(+2=11) Ab_5*/
+        mff(932.328),  /*(+2=13) Bb_5*/
+        mff(1046.502), /*(+2=15) C_6*/
+        mff(1108.731), /*(+1=16) Db_6*/
     ]);
-	
+
     assert_eq!(
         format!("{:.3?}", voice_actual),
         format!("{:.3?}", voice_expected)
     );
-	
-	sequence_helper(voice_actual);
+
+    sequence_helper(voice_actual);
 }

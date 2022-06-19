@@ -28,6 +28,7 @@ pub enum Accidental {
     Sharp,
 }
 
+#[derive(Debug)]
 pub enum Note {
     C,
     D,
@@ -52,6 +53,7 @@ impl Note {
     }
 }
 
+#[derive(Debug)]
 pub enum ScaleKind {
     Major,
     Minor,
@@ -261,6 +263,19 @@ where
 
                 return Some(pitches);
             }
+        }
+    }
+}
+
+impl<T> std::fmt::Display for Key<T>
+where
+    T: temperament::Temperament,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.accidental {
+            Accidental::Flat => write!(f, "{:?}b", self.note),
+            Accidental::Natural => write!(f, "{:?}", self.note),
+            Accidental::Sharp => write!(f, "{:?}#", self.note),
         }
     }
 }

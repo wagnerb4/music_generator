@@ -100,54 +100,6 @@ impl ActionState for NeutralActionState {
  * order to the notes of seven consecutive octaves of the given key.
  * The letter x will be mapped to a rest.
  */
-pub struct SimpleAction<T: notation::Temperament> {
-    key: notation::Key<T>,
-    scale_kind: &'static notation::ScaleKind,
-}
+pub mod simple_action;
 
-impl<T: notation::Temperament> SimpleAction<T> {
-    pub fn new(key: notation::Key<T>, scale_kind: &'static notation::ScaleKind) -> Self {
-        SimpleAction { key, scale_kind }
-    }
-}
-
-impl<T: notation::Temperament> Action<NeutralActionState> for SimpleAction<T> {
-    fn gen_next_musical_element(
-        &self,
-        symbol: char,
-        _state: RefMut<NeutralActionState>,
-    ) -> Result<notation::MusicalElement, error::ActionError> {
-        if let Some(pitches) = self.key.get_scale(self.scale_kind, 4, 1, 7 * 7) {
-            let mut char_pos = symbol as u16;
-            let char_pos_cap_a = 'A' as u16;
-            if char_pos < char_pos_cap_a {
-                Err(error::ActionError::from_error_kind(
-                    &super::ErrorKind::GenerationError,
-                ))
-            } else {
-                char_pos = char_pos - char_pos_cap_a;
-                if char_pos >= 7 * 7 {
-                    if symbol == 'x' {
-                        Ok(notation::MusicalElement::Rest {
-                            duration: notation::Duration(1),
-                        })
-                    } else {
-                        Err(error::ActionError::from_error_kind(
-                            &super::ErrorKind::GenerationError,
-                        ))
-                    }
-                } else {
-                    Ok(notation::MusicalElement::Note {
-                        pitch: pitches[char_pos as usize],
-                        duration: notation::Duration(1),
-                        volume: notation::M,
-                    })
-                }
-            }
-        } else {
-            Err(error::ActionError::from_error_kind(
-                &super::ErrorKind::GenerationError,
-            ))
-        }
-    }
-}
+pub use simple_action::SimpleAction;

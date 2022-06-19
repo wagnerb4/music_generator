@@ -57,6 +57,94 @@ fn sequence_helper(voice: Voice) {
     */
 }
 
+/* Tests the simple action, which mapps the 49 letters A-Za-w to the notes of seven octaves
+ * ABCDEFG HIJKLMN OPQRSTU VWXYZab cdefghi jklmnop qrstuvw
+ * 1234567 1234567 1234567 1234567 1234567 1234567 1234567
+ */
+ 
+#[test]
+fn voice_of_c_major_seven_octaves() {
+    let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
+    let key = Key::new(&Note::C, &Accidental::Natural, temp);
+    let axiom: Axiom = Axiom::from("AHOVcjqBIPWdkrCJQXelsDKRYfmtELSZgnuFMTahovGNUbipw").unwrap();
+
+    let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
+
+    let action: Rc<dyn Action<_>> = Rc::new(SimpleAction::new(key, &ScaleKind::Major));
+
+    for atom in axiom.atoms() {
+        atom_types.insert(
+            atom,
+            match atom.symbol {
+                _ => AtomType::HasAction {
+                    action: Rc::clone(&action),
+                },
+            },
+        );
+    }
+
+    let voice_actual = Voice::from(&axiom, atom_types).unwrap();
+
+    let voice_expected = Voice::from_musical_elements(vec![
+        mff(261.626),  /*-9 C_4*/
+		mff(523.251),  /*3  C_5*/
+		mff(1046.502),  /*15 C_6*/
+		mff(2093.005),  /*27 C_7*/
+		mff(4186.009),  /*39 C_8*/
+		mff(8372.018),  /*51 C_9*/
+		mff(16744.036),  /*63 C_10*/
+		mff(277.183),  /*-7 D_4*/
+		mff(277.183),  /*5  D_5*/
+		mff(277.183),  /*17 D_6*/
+		mff(277.183),  /*29 D_7*/
+		mff(277.183),  /*41 D_8*/
+		mff(277.183),  /*53 D_9*/
+		mff(277.183),  /*65 D_10*/
+		mff(277.183),  /*-5 E_4*/
+		mff(277.183),  /*7  E_5*/
+		mff(277.183),  /*19 E_6*/
+		mff(277.183),  /*31 E_7*/
+		mff(277.183),  /*43 E_8*/
+		mff(277.183),  /*55 E_9*/
+		mff(277.183),  /*67 E_10*/
+		mff(277.183),  /*-4 F_4*/
+		mff(277.183),  /*8  F_5*/
+		mff(277.183),  /*20 F_6*/
+		mff(277.183),  /*32 F_7*/
+		mff(277.183),  /*44 F_8*/
+		mff(277.183),  /*56 F_9*/
+		mff(277.183),  /*68 F_10*/
+		mff(277.183),  /*-2 G_4*/
+		mff(277.183),  /*10 G_5*/
+		mff(277.183),  /*22 G_6*/
+		mff(277.183),  /*34 G_7*/
+		mff(277.183),  /*46 G_8*/
+		mff(277.183),  /*58 G_9*/
+		mff(277.183),  /*70 G_10*/
+		mff(277.183),  /*0  A_4*/
+		mff(277.183),  /*12 A_5*/
+		mff(277.183),  /*24 A_6*/
+		mff(277.183),  /*36 A_7*/
+		mff(277.183),  /*48 A_8*/
+		mff(277.183),  /*60 A_9*/
+		mff(277.183),  /*72 A_10*/
+		mff(277.183),  /*2  B_4*/
+		mff(277.183),  /*14 B_5*/
+		mff(277.183),  /*26 B_6*/
+		mff(277.183),  /*38 B_7*/
+		mff(277.183),  /*50 B_8*/
+		mff(277.183),  /*62 B_9*/
+		mff(277.183),  /*74 B_10*/
+    ]);
+
+    assert_eq!(
+        format!("{:.3?}", voice_actual),
+        format!("{:.3?}", voice_expected)
+    );
+
+    sequence_helper(voice_actual);
+}
+
 #[test]
 fn voice_of_d_flat_major_two_octave_scale() {
     let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));

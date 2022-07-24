@@ -1,5 +1,7 @@
 use super::{Pitch, OCTAVE_ADDITIVE, OCTAVE_MULTIPLICATIVE};
 
+mod proportionen;
+
 /* Different pitch standards.
  * The number always referes to
  * the frequency of A_4 in Herz.
@@ -14,6 +16,9 @@ pub const CLASSICAL_PITCH: f64 = 429.5; // 427–430
 const REFERENCE_PITCH_OCTAVE: u8 = 4;
 const REFERENCE_PITCH_DEGREE: u8 = 10;
 
+/*
+ * twelve tone temperament
+ */
 pub trait Temperament {
     /**
      * Construct a new object of this Temperament
@@ -33,6 +38,48 @@ pub trait Temperament {
      * position: 1 2  3 4  5 6 7  8 9  10 11 12
      */
     fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch>;
+}
+
+/*
+ * seven tone temperament
+ */
+pub trait SevenToneTemperament {
+    /**
+     * Construct a new object of this Temperament
+     * and use the given pitch standard as a reference
+     * for the pitch creation.
+     */
+    fn new(pitch_standard: f64) -> Self
+    where
+        Self: Sized;
+
+    /**
+     * Get the pitch of a given tone in a given octave by its position using this Temperament.
+     * octave referes to the number of the octave in scientific pitch notation can theoretically be lower than 0 or higher than 9
+     * position refers to the position of the tone whose pitch should be calculated. If the position is lower than 1 or greater than 7 the relative pitches in
+     * the respective octaves will be calculated
+     * pitch:    c d e f g a h
+     * position: 1 2 3 4 5 6 7
+     */
+    fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch>;
+}
+
+/**
+ * Creates a seven tone temperament based on whole
+ * number rations by leveraging the idea of euler's tonnetz.
+ */
+pub struct JustIntonation {
+    pitch_standard: f64,
+}
+
+impl SevenToneTemperament for JustIntonation {
+    fn new(pitch_standard: f64) -> JustIntonation {
+        JustIntonation { pitch_standard }
+    }
+
+    fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch> {
+        return None;
+    }
 }
 
 pub struct EqualTemperament {

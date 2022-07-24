@@ -21,14 +21,14 @@ const DEGREES_IN_SCALE: u8 = 7;
 //                                                              c  d  e  f  g  a  b  c
 const SEMITONES_IN_MAJOR_SCALE: [u8; DEGREES_IN_SCALE as usize] = [2, 2, 1, 2, 2, 2, 1];
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Accidental {
     Flat,
     Natural,
     Sharp,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Note {
     C,
     D,

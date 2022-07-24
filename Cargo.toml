@@ -2,8 +2,12 @@
 name = "music_generator"
 version = "0.1.0"
 edition = "2021"
+authors = ["Benjamin Wagner"]
+description = "Generate music by using L-Systems and music theory."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 fundsp = "0.4.0"
+clap = { version = "3.0", features = ["derive"] }
+anyhow = "1.0"

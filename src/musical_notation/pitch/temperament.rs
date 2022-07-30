@@ -1,4 +1,4 @@
-use super::{Pitch, OCTAVE_ADDITIVE, OCTAVE_MULTIPLICATIVE};
+use super::{Pitch, OCTAVE_MULTIPLICATIVE};
 
 mod proportionen;
 
@@ -14,7 +14,6 @@ pub const CHORTON_PITCH: f64 = 466.0;
 pub const CLASSICAL_PITCH: f64 = 429.5; // 427–430
 
 const REFERENCE_PITCH_OCTAVE: u8 = 4;
-const REFERENCE_PITCH_DEGREE: u8 = 10;
 
 /*
  * twelve tone temperament
@@ -38,6 +37,20 @@ pub trait Temperament {
      * position: 1 2  3 4  5 6 7  8 9  10 11 12
      */
     fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch>;
+
+    /**
+     * returns the number of notes in an octave
+     */
+    fn get_octave_additive() -> u8 {
+        12
+    }
+
+    /**
+     * returns the degree of the reference pitch
+     */
+    fn get_reference_pitch_degree() -> u8 {
+        10
+    }
 }
 
 /*
@@ -49,7 +62,11 @@ pub trait SevenToneTemperament {
      * and use the given pitch standard as a reference
      * for the pitch creation.
      */
-    fn new(pitch_standard: f64) -> Self
+    fn new(
+        pitch_standard: f64,
+        reference_pitch_degree: u8,
+        proportionen: [proportionen::Proportion; 7],
+    ) -> Self
     where
         Self: Sized;
 
@@ -62,6 +79,13 @@ pub trait SevenToneTemperament {
      * position: 1 2 3 4 5 6 7
      */
     fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch>;
+
+    /**
+     * returns the number of notes in an octave
+     */
+    fn get_octave_additive() -> u8 {
+        7
+    }
 }
 
 /**
@@ -70,15 +94,50 @@ pub trait SevenToneTemperament {
  */
 pub struct JustIntonation {
     pitch_standard: f64,
+    reference_pitch_degree: u8,
+    proportionen: [proportionen::Proportion; 7],
 }
 
 impl SevenToneTemperament for JustIntonation {
-    fn new(pitch_standard: f64) -> JustIntonation {
-        JustIntonation { pitch_standard }
+    fn new(
+        pitch_standard: f64,
+        reference_pitch_degree: u8,
+        proportionen: [proportionen::Proportion; 7],
+    ) -> JustIntonation {
+        JustIntonation {
+            pitch_standard,
+            reference_pitch_degree,
+            proportionen,
+        }
     }
 
     fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch> {
-        return None;
+        let relative_a = position - self.reference_pitch_degree as i16;
+        let octave_proportion =
+            proportionen::OCTAVE_UP.pow((octave - REFERENCE_PITCH_OCTAVE as i16) as i32);
+
+        let mut position_proportion = proportionen::UNIT;
+
+        if relative_a > 0 {
+            for i in 0..relative_a {
+                position_proportion = position_proportion.fusion(&self.proportionen[i as usize]);
+            }
+        } else if relative_a < 0 {
+            let relative_a = relative_a + 7; // -6 -> 1
+            for i in relative_a..(6 + 1) {
+                // 1, 2, 3, 4, 5, 6
+                // 6, 5, 4, 3, 2, 1
+                position_proportion =
+                    position_proportion.fusion(&self.proportionen[(relative_a + 6 - i) as usize]);
+            }
+            position_proportion = position_proportion.invert();
+        }
+
+        return Some(Pitch(
+            octave_proportion
+                .fusion(&position_proportion)
+                .scale(self.pitch_standard),
+        ));
     }
 }
 
@@ -92,13 +151,14 @@ impl Temperament for EqualTemperament {
     }
 
     fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch> {
-        let octave_intervall = (octave - REFERENCE_PITCH_OCTAVE as i16) * OCTAVE_ADDITIVE as i16;
-        let relative_a = position - REFERENCE_PITCH_DEGREE as i16;
+        let octave_intervall =
+            (octave - REFERENCE_PITCH_OCTAVE as i16) * Self::get_octave_additive() as i16;
+        let relative_a = position - Self::get_reference_pitch_degree() as i16;
         let intervall_size = relative_a + octave_intervall;
         return Some(Pitch(
             self.pitch_standard
                 * (OCTAVE_MULTIPLICATIVE as f64)
-                    .powf(intervall_size as f64 / OCTAVE_ADDITIVE as f64),
+                    .powf(intervall_size as f64 / Self::get_octave_additive() as f64),
         ));
     }
 }

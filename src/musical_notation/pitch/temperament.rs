@@ -112,28 +112,50 @@ impl SevenToneTemperament for JustIntonation {
     }
 
     fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch> {
-        let relative_a = dbg!(position - self.reference_pitch_degree as i16);
+        let mut position = position;
+        let mut octave = octave;
+
+        if position < 1 {
+            position -= 1; // 0 -> -1; -6 -> -7
+            position *= -1; // -1 -> 1; -7 -> 7
+            octave = octave - (1 + ((position - 1) / 7));
+            position = ((position - 1) % 7) + 1;
+            // 1 -> 7, 2 -> 6, 3 -> 5, 4 -> 4, 5 -> 3, 6 -> 2, 7 -> 1
+            position = 7 - position + 1;
+        } else if position > 7 {
+            position -= 7; // 8 -> 1
+            octave = octave + (position - 1) / 7 + 1;
+            // 1 - 7, 8 - 14, ...
+            position = (position - 1) % 7 + 1;
+        }
+
+        if self.reference_pitch_degree < 1 || self.reference_pitch_degree > 7 {
+            return None;
+        }
+
+        // the following code assumes: 1 <= position <= 7 and  1 <= self.reference_pitch_degree <= 7
+
+        let relative_a = position - self.reference_pitch_degree as i16;
         let octave_proportion =
-            dbg!(proportionen::OCTAVE_UP.pow((octave - REFERENCE_PITCH_OCTAVE as i16) as i32));
+            proportionen::OCTAVE_UP.pow((octave - REFERENCE_PITCH_OCTAVE as i16) as i32);
 
         let mut position_proportion = proportionen::UNIT;
 
-        if dbg!(relative_a > 0) {
+        if relative_a > 0 {
             for i in (self.reference_pitch_degree - 1) as u16
                 ..((self.reference_pitch_degree - 1) as u16 + relative_a as u16)
             {
-                position_proportion =
-                    dbg!(position_proportion.fusion(&self.proportionen[dbg!(i as usize)]));
+                position_proportion = position_proportion.fusion(&self.proportionen[i as usize]);
             }
-        } else if dbg!(relative_a < 0) {
-            let position = position - 1; // 1 -> 0; 5 -> 4; 4 -> 3
+        } else if relative_a < 0 {
+            position = position - 1; // 1 -> 0; 5 -> 4; 4 -> 3
             for i in position..(4 + 1) {
                 // i = 0, 1, 2, 3, 4; i = 4; i = 3, 4
                 // position + 4 - i = 4, 3, 2, 1, 0; position + 4 - i = 4; position + 4 - i = 4, 3
-                position_proportion = dbg!(position_proportion
-                    .fusion(&self.proportionen[dbg!((position + 4 - i) as usize)]));
+                position_proportion =
+                    position_proportion.fusion(&self.proportionen[(position + 4 - i) as usize]);
             }
-            position_proportion = dbg!(position_proportion.invert());
+            position_proportion = position_proportion.invert();
         }
 
         return Some(Pitch(
@@ -243,6 +265,10 @@ mod tests {
             "Some(Pitch(488.889))"
         );
         assert_eq!(
+            format!("{:.3?}", temp.get_pitch(3, 15)), // C5
+            "Some(Pitch(521.481))"
+        );
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 8)), // C5
             "Some(Pitch(521.481))"
         );
@@ -250,12 +276,16 @@ mod tests {
             format!("{:.3?}", temp.get_pitch(5, 1)), // C5
             "Some(Pitch(521.481))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(5, 0)), // B4
             "Some(Pitch(488.889))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(5, -6)), // C4
+            "Some(Pitch(260.741))"
+        );
+        assert_eq!(
+            format!("{:.3?}", temp.get_pitch(6, -13)), // C5
             "Some(Pitch(260.741))"
         );
     }

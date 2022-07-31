@@ -250,5 +250,13 @@ mod tests {
             format!("{:.3?}", temp.get_pitch(5, 1)), // C5
             "Some(Pitch(521.481))"
         );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(5, 0)), // B4
+            "Some(Pitch(488.889))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(5, -6)), // C4
+            "Some(Pitch(260.741))"
+        );
     }
 }

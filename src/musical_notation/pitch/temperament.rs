@@ -165,7 +165,7 @@ impl Temperament for EqualTemperament {
 
 #[cfg(test)]
 mod tests {
-    use super::{EqualTemperament, Temperament, STUTTGART_PITCH};
+    use super::{EqualTemperament, JustIntonation, Temperament, SevenToneTemperament, proportionen, STUTTGART_PITCH};
 
     #[test]
     fn equal_temperament_test() {
@@ -195,4 +195,54 @@ mod tests {
             "Some(Pitch(261.626))"
         );
     }
+	
+	#[test]
+	fn just_intonation_test() {
+		let proportionen: [proportionen::Proportion; 7] = [
+			proportionen::Proportion::new(8, 9), // D
+			proportionen::Proportion::new(9, 10), // E
+			proportionen::Proportion::new(15, 16), // F
+			proportionen::Proportion::new(8, 9), // G
+			proportionen::Proportion::new(8, 9), // A
+			proportionen::Proportion::new(9, 10), // B
+			proportionen::Proportion::new(15, 16) // C
+		];
+		let temp = JustIntonation::new(STUTTGART_PITCH, 6, proportionen);
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(4, 1)), // C4
+            "Some(Pitch(260,741))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(4, 2)), // D4
+            "Some(Pitch(293,333))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(4, 3)), // E4
+            "Some(Pitch(325,926))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(4, 4)), // F4
+            "Some(Pitch(347,654))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(4, 5)), // G4
+            "Some(Pitch(391.111))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(4, 6)), // A4
+            "Some(Pitch(440.000))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(4, 7)), // B4
+            "Some(Pitch(488,889))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(4, 8)), // C5
+            "Some(Pitch(521,481))"
+        );
+		assert_eq!(
+            format!("{:.3?}", temp.get_pitch(5, 1)), // C5
+            "Some(Pitch(521,481))"
+        );		
+	}
 }

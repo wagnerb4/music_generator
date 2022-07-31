@@ -112,25 +112,28 @@ impl SevenToneTemperament for JustIntonation {
     }
 
     fn get_pitch(&self, octave: i16, position: i16) -> Option<Pitch> {
-        let relative_a = position - self.reference_pitch_degree as i16;
+        let relative_a = dbg!(position - self.reference_pitch_degree as i16);
         let octave_proportion =
-            proportionen::OCTAVE_UP.pow((octave - REFERENCE_PITCH_OCTAVE as i16) as i32);
+            dbg!(proportionen::OCTAVE_UP.pow((octave - REFERENCE_PITCH_OCTAVE as i16) as i32));
 
         let mut position_proportion = proportionen::UNIT;
 
-        if relative_a > 0 {
-            for i in 0..relative_a {
-                position_proportion = position_proportion.fusion(&self.proportionen[i as usize]);
-            }
-        } else if relative_a < 0 {
-            let relative_a = relative_a + 7; // -6 -> 1
-            for i in relative_a..(6 + 1) {
-                // 1, 2, 3, 4, 5, 6
-                // 6, 5, 4, 3, 2, 1
+        if dbg!(relative_a > 0) {
+            for i in (self.reference_pitch_degree - 1) as u16
+                ..((self.reference_pitch_degree - 1) as u16 + relative_a as u16)
+            {
                 position_proportion =
-                    position_proportion.fusion(&self.proportionen[(relative_a + 6 - i) as usize]);
+                    dbg!(position_proportion.fusion(&self.proportionen[dbg!(i as usize)]));
             }
-            position_proportion = position_proportion.invert();
+        } else if dbg!(relative_a < 0) {
+            let position = position - 1; // 1 -> 0; 5 -> 4; 4 -> 3
+            for i in position..(4 + 1) {
+                // i = 0, 1, 2, 3, 4; i = 4; i = 3, 4
+                // position + 4 - i = 4, 3, 2, 1, 0; position + 4 - i = 4; position + 4 - i = 4, 3
+                position_proportion = dbg!(position_proportion
+                    .fusion(&self.proportionen[dbg!((position + 4 - i) as usize)]));
+            }
+            position_proportion = dbg!(position_proportion.invert());
         }
 
         return Some(Pitch(
@@ -165,7 +168,10 @@ impl Temperament for EqualTemperament {
 
 #[cfg(test)]
 mod tests {
-    use super::{EqualTemperament, JustIntonation, Temperament, SevenToneTemperament, proportionen, STUTTGART_PITCH};
+    use super::{
+        proportionen, EqualTemperament, JustIntonation, SevenToneTemperament, Temperament,
+        STUTTGART_PITCH,
+    };
 
     #[test]
     fn equal_temperament_test() {
@@ -195,54 +201,54 @@ mod tests {
             "Some(Pitch(261.626))"
         );
     }
-	
-	#[test]
-	fn just_intonation_test() {
-		let proportionen: [proportionen::Proportion; 7] = [
-			proportionen::Proportion::new(8, 9), // D
-			proportionen::Proportion::new(9, 10), // E
-			proportionen::Proportion::new(15, 16), // F
-			proportionen::Proportion::new(8, 9), // G
-			proportionen::Proportion::new(8, 9), // A
-			proportionen::Proportion::new(9, 10), // B
-			proportionen::Proportion::new(15, 16) // C
-		];
-		let temp = JustIntonation::new(STUTTGART_PITCH, 6, proportionen);
-		assert_eq!(
+
+    #[test]
+    fn just_intonation_test() {
+        let proportionen: [proportionen::Proportion; 7] = [
+            proportionen::Proportion::new(8, 9),   // D
+            proportionen::Proportion::new(9, 10),  // E
+            proportionen::Proportion::new(15, 16), // F
+            proportionen::Proportion::new(8, 9),   // G
+            proportionen::Proportion::new(8, 9),   // A
+            proportionen::Proportion::new(9, 10),  // B
+            proportionen::Proportion::new(15, 16), // C
+        ];
+        let temp = JustIntonation::new(STUTTGART_PITCH, 6, proportionen);
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 1)), // C4
-            "Some(Pitch(260,741))"
+            "Some(Pitch(260.741))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 2)), // D4
-            "Some(Pitch(293,333))"
+            "Some(Pitch(293.333))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 3)), // E4
-            "Some(Pitch(325,926))"
+            "Some(Pitch(325.926))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 4)), // F4
-            "Some(Pitch(347,654))"
+            "Some(Pitch(347.654))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 5)), // G4
             "Some(Pitch(391.111))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 6)), // A4
             "Some(Pitch(440.000))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 7)), // B4
-            "Some(Pitch(488,889))"
+            "Some(Pitch(488.889))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(4, 8)), // C5
-            "Some(Pitch(521,481))"
+            "Some(Pitch(521.481))"
         );
-		assert_eq!(
+        assert_eq!(
             format!("{:.3?}", temp.get_pitch(5, 1)), // C5
-            "Some(Pitch(521,481))"
-        );		
-	}
+            "Some(Pitch(521.481))"
+        );
+    }
 }

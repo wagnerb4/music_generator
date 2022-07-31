@@ -22,7 +22,7 @@ pub const UNIT: Proportion = Proportion {
     magnitude_b_norm: 1,
 };
 
-#[derive(Eq)]
+#[derive(Eq, Debug)]
 pub struct Proportion {
     magnitude_a: u32,
     magnitude_b: u32,
@@ -162,30 +162,30 @@ mod tests {
         assert_eq!(format!("{}", a.pow(1)), "2:3");
         assert_eq!(format!("{}", a.pow(3)), "8:27");
     }
-	
-	#[test]
-	fn scale_up_test() {
-		let a = Proportion::new(2, 3);
-		let b = Proportion::new(4, 6);
-		assert_eq!(format!("{:.3?}", a.scale(6.000)), "9.000");
-		assert_eq!(format!("{:.3?}", b.scale(6.000)), "9.000");
-		assert_eq!(format!("{:.3?}", a.scale(3.000)), "4.500");
-		assert_eq!(format!("{:.3?}", b.scale(3.000)), "4.500");
-		assert_eq!(format!("{:.3?}", a.scale(3.333)), "5.000");
-		assert_eq!(format!("{:.3?}", b.scale(3.333)), "5.000");
-		assert_eq!(format!("{:.3?}", a.scale(3.251)), "4.877");
-		assert_eq!(format!("{:.3?}", b.scale(3.251)), "4.877");	
-	}
-	
-	#[test]
-	fn scale_down_test() {
-		let a = Proportion::new(3, 2);
-		let b = Proportion::new(6, 4);
-		assert_eq!(format!("{:.3?}", a.scale(6.000)), "4.000");
-		assert_eq!(format!("{:.3?}", b.scale(6.000)), "4.000");
-		assert_eq!(format!("{:.3?}", a.scale(2.000)), "1.333");
-		assert_eq!(format!("{:.3?}", b.scale(2.000)), "1.333");
-		assert_eq!(format!("{:.3?}", a.scale(3.333)), "2.222");
-		assert_eq!(format!("{:.3?}", b.scale(3.333)), "2.222");
-	}
+
+    #[test]
+    fn scale_up_test() {
+        let a = Proportion::new(2, 3);
+        let b = Proportion::new(4, 6);
+        assert_eq!(format!("{:.3?}", a.scale(6.000)), "9.000");
+        assert_eq!(format!("{:.3?}", b.scale(6.000)), "9.000");
+        assert_eq!(format!("{:.3?}", a.scale(3.000)), "4.500");
+        assert_eq!(format!("{:.3?}", b.scale(3.000)), "4.500");
+        assert_eq!(format!("{:.3?}", a.scale(3.333)), "5.000");
+        assert_eq!(format!("{:.3?}", b.scale(3.333)), "5.000");
+        assert_eq!(format!("{:.3?}", a.scale(3.251)), "4.877");
+        assert_eq!(format!("{:.3?}", b.scale(3.251)), "4.877");
+    }
+
+    #[test]
+    fn scale_down_test() {
+        let a = Proportion::new(3, 2);
+        let b = Proportion::new(6, 4);
+        assert_eq!(format!("{:.3?}", a.scale(6.000)), "4.000");
+        assert_eq!(format!("{:.3?}", b.scale(6.000)), "4.000");
+        assert_eq!(format!("{:.3?}", a.scale(2.000)), "1.333");
+        assert_eq!(format!("{:.3?}", b.scale(2.000)), "1.333");
+        assert_eq!(format!("{:.3?}", a.scale(3.333)), "2.222");
+        assert_eq!(format!("{:.3?}", b.scale(3.333)), "2.222");
+    }
 }

@@ -23,10 +23,16 @@ enum PitchStandard {
 }
 
 #[derive(Clone, ArgEnum)]
-pub enum ScaleKind {
+enum ScaleKind {
     Major,
     Minor,
     Chromatic,
+}
+
+#[derive(Clone, ArgEnum)]
+enum TemperamentKind {
+    EqualTemperament,
+    JustIntonation
 }
 
 fn parse_tonic(s: &str) -> Result<(&'static musical_notation::Note, &'static musical_notation::Accidental), String> {
@@ -122,6 +128,8 @@ struct Cli {
     scale_tonic: (&'static musical_notation::Note, &'static musical_notation::Accidental),
     #[clap(arg_enum, long, default_value_t = ScaleKind::Major)]
     scale_kind: ScaleKind,
+    #[clap(arg_enum, long, default_value_t = TemperamentKind::EqualTemperament)]
+    temperament_kind: TemperamentKind,
 }
 
 fn sequence_helper(voice: Voice, dest_path: std::path::PathBuf) -> Result<()> {
@@ -166,14 +174,18 @@ fn main() -> Result<()> {
     let args = Cli::parse();
 
     let axiom = Axiom::from(&args.axiom)?;
-    let temp = Rc::new(musical_notation::EqualTemperament::new(
-        match args.pitch_standard {
-            PitchStandard::Baroque => musical_notation::BAROQUE_PITCH,
-            PitchStandard::Chorton => musical_notation::CHORTON_PITCH,
-            PitchStandard::Classical => musical_notation::CLASSICAL_PITCH,
-            PitchStandard::Stuttgart => musical_notation::STUTTGART_PITCH,
-        },
-    ));
+
+    let pitch_standard: f64 = match args.pitch_standard {
+        PitchStandard::Baroque => musical_notation::BAROQUE_PITCH,
+        PitchStandard::Chorton => musical_notation::CHORTON_PITCH,
+        PitchStandard::Classical => musical_notation::CLASSICAL_PITCH,
+        PitchStandard::Stuttgart => musical_notation::STUTTGART_PITCH,
+    };
+
+    let temp = match args.temperament_kind {
+        TemperamentKind::EqualTemperament => Rc::new(musical_notation::EqualTemperament::new(pitch_standard)),
+        TemperamentKind::JustIntonation => panic!("Not implemented!")
+    };
     
     let key = musical_notation::Key::new(
         args.scale_tonic.0,

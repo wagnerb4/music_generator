@@ -21,14 +21,14 @@ const DEGREES_IN_SCALE: u8 = 7;
 //                                                              c  d  e  f  g  a  b  c
 const SEMITONES_IN_MAJOR_SCALE: [u8; DEGREES_IN_SCALE as usize] = [2, 2, 1, 2, 2, 2, 1];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Accidental {
     Flat,
     Natural,
     Sharp,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Note {
     C,
     D,
@@ -51,14 +51,25 @@ impl Note {
             Note::B => 6,
         }
     }
+
+    fn get_by_index(index: u8) -> Result<&'static Self, ()> {
+        match index {
+            0 => Ok(&Note::C),
+            1 => Ok(&Note::D),
+            2 => Ok(&Note::E),
+            3 => Ok(&Note::F),
+            4 => Ok(&Note::G),
+            5 => Ok(&Note::A),
+            6 => Ok(&Note::B),
+            7.. => Err(()),
+        }
+    }
 }
 
 #[derive(Debug)]
 pub enum ScaleKind {
     Major,
     Minor,
-    RelativeMinor,
-    Chromatic,
 }
 
 pub struct Key<T>
@@ -82,188 +93,245 @@ where
         }
     }
 
-    /**
-     * Get the key of the respective position in the twelve-tone system.
-     * position - a position of 1 or 13 indicates the key of do
-     * major is a boolean value indicating whether the key is intended to
-     * to be used as a minor or major scale
-     */
-    fn key_by_position(&self, position: u8, major: bool) -> Option<Key<T>> {
-        let mut position: u8 = position - 1;
-        position %= OCTAVE_ADDITIVE;
-        position += 1;
-
-        let temperament: Rc<T> = Rc::clone(&self.temperament);
-
-        let key = match position {
-            1 => Some(Key::new(&Note::C, &Accidental::Natural, temperament)),
-            2 => Some(match major {
-                true => Key::new(&Note::C, &Accidental::Sharp, temperament),
-                false => Key::new(&Note::D, &Accidental::Flat, temperament),
-            }),
-            3 => Some(Key::new(&Note::D, &Accidental::Natural, temperament)),
-            4 => Some(match major {
-                true => Key::new(&Note::D, &Accidental::Sharp, temperament),
-                false => Key::new(&Note::E, &Accidental::Flat, temperament),
-            }),
-            5 => Some(Key::new(&Note::E, &Accidental::Natural, temperament)),
-            6 => Some(Key::new(&Note::F, &Accidental::Natural, temperament)),
-            7 => Some(match major {
-                true => Key::new(&Note::F, &Accidental::Sharp, temperament),
-                false => Key::new(&Note::G, &Accidental::Flat, temperament),
-            }),
-            8 => Some(Key::new(&Note::G, &Accidental::Natural, temperament)),
-            9 => Some(match major {
-                true => Key::new(&Note::G, &Accidental::Sharp, temperament),
-                false => Key::new(&Note::A, &Accidental::Flat, temperament),
-            }),
-            10 => Some(Key::new(&Note::A, &Accidental::Natural, temperament)),
-            11 => Some(match major {
-                true => Key::new(&Note::A, &Accidental::Sharp, temperament),
-                false => Key::new(&Note::B, &Accidental::Flat, temperament),
-            }),
-            12 => Some(Key::new(&Note::B, &Accidental::Natural, temperament)),
-            _ => None,
+    /// Returns the notes with accidentials in the current major key.
+    ///
+    fn get_key_signature(
+        &self,
+        note: &'static Note,
+        accidental: &'static Accidental,
+    ) -> (&'static Accidental, Vec<&'static Note>) {
+        let helper = |index: i8| -> (&'static Accidental, Vec<&'static Note>) {
+            let accidentals_sharp: [&'static Note; 7] = [
+                &Note::F,
+                &Note::C,
+                &Note::G,
+                &Note::D,
+                &Note::A,
+                &Note::E,
+                &Note::B,
+            ];
+            let accidentals_flat: [&'static Note; 7] = [
+                &Note::B,
+                &Note::E,
+                &Note::A,
+                &Note::D,
+                &Note::G,
+                &Note::C,
+                &Note::F,
+            ];
+            return (
+                match index {
+                    0 => &Accidental::Natural,
+                    -7..=-1 => &Accidental::Flat,
+                    1..=8 => &Accidental::Sharp,
+                    _ => panic!("logischer Fehler"),
+                },
+                match index {
+                    0 => vec![],
+                    -7..=-1 => accidentals_flat[0..(index.abs() as usize)].to_vec(),
+                    1..=8 => accidentals_sharp[0..(index as usize)].to_vec(),
+                    _ => panic!("logischer Fehler"),
+                },
+            );
         };
 
-        return key;
+        match (note, accidental) {
+            (&Note::C, &Accidental::Flat) => helper(-7),
+            (&Note::G, &Accidental::Flat) => helper(-6),
+            (&Note::D, &Accidental::Flat) => helper(-5),
+            (&Note::A, &Accidental::Flat) => helper(-4),
+            (&Note::G, &Accidental::Sharp) => helper(-4),
+            (&Note::E, &Accidental::Flat) => helper(-3),
+            (&Note::D, &Accidental::Sharp) => helper(-3),
+            (&Note::B, &Accidental::Flat) => helper(-2),
+            (&Note::A, &Accidental::Sharp) => helper(-2),
+            (&Note::F, &Accidental::Natural) => helper(-1),
+            (&Note::E, &Accidental::Sharp) => helper(-1),
+            (&Note::C, &Accidental::Natural) => helper(0),
+            (&Note::B, &Accidental::Sharp) => helper(0),
+            (&Note::G, &Accidental::Natural) => helper(1),
+            (&Note::D, &Accidental::Natural) => helper(2),
+            (&Note::A, &Accidental::Natural) => helper(3),
+            (&Note::E, &Accidental::Natural) => helper(4),
+            (&Note::F, &Accidental::Flat) => helper(4),
+            (&Note::B, &Accidental::Natural) => helper(5),
+            (&Note::F, &Accidental::Sharp) => helper(6),
+            (&Note::C, &Accidental::Sharp) => helper(7),
+        }
     }
 
-    fn get_degree(&self, position: u8) -> Option<u8> {
-        let mut position = position - 1;
-        position %= OCTAVE_ADDITIVE;
-        position += 1;
+    /// Returns the tonic of the major scale, whose
+    /// relative minor scale has the tonic of this key.
+    ///
+    fn get_major_of_minor(&self) -> (&'static Note, &'static Accidental) {
+        match (self.note, self.accidental) {
+            (&Note::C, &Accidental::Flat) => (&Note::D, &Accidental::Natural),
+            (&Note::G, &Accidental::Flat) => (&Note::A, &Accidental::Natural),
+            (&Note::D, &Accidental::Flat) => (&Note::E, &Accidental::Natural),
+            (&Note::A, &Accidental::Flat) => (&Note::C, &Accidental::Flat),
+            (&Note::G, &Accidental::Sharp) => (&Note::C, &Accidental::Flat),
+            (&Note::E, &Accidental::Flat) => (&Note::G, &Accidental::Flat),
+            (&Note::D, &Accidental::Sharp) => (&Note::G, &Accidental::Flat),
+            (&Note::B, &Accidental::Flat) => (&Note::D, &Accidental::Flat),
+            (&Note::A, &Accidental::Sharp) => (&Note::D, &Accidental::Flat),
+            (&Note::F, &Accidental::Natural) => (&Note::A, &Accidental::Flat),
+            (&Note::E, &Accidental::Sharp) => (&Note::A, &Accidental::Flat),
+            (&Note::C, &Accidental::Natural) => (&Note::E, &Accidental::Flat),
+            (&Note::B, &Accidental::Sharp) => (&Note::E, &Accidental::Flat),
+            (&Note::G, &Accidental::Natural) => (&Note::B, &Accidental::Flat),
+            (&Note::D, &Accidental::Natural) => (&Note::F, &Accidental::Natural),
+            (&Note::A, &Accidental::Natural) => (&Note::C, &Accidental::Natural),
+            (&Note::E, &Accidental::Natural) => (&Note::G, &Accidental::Natural),
+            (&Note::F, &Accidental::Flat) => (&Note::G, &Accidental::Natural),
+            (&Note::B, &Accidental::Natural) => (&Note::D, &Accidental::Natural),
+            (&Note::F, &Accidental::Sharp) => (&Note::A, &Accidental::Natural),
+            (&Note::C, &Accidental::Sharp) => (&Note::E, &Accidental::Natural),
+        }
+    }
 
-        for degree in 1..(DEGREES_IN_SCALE + 1) {
-            let mut position_of_degree = self.get_position(degree) - 1;
-            position_of_degree %= OCTAVE_ADDITIVE;
-            position_of_degree += 1;
+    /// Returns the notes and accidentals of the current key.
+    ///
+    fn get_scale(
+        &self,
+        scale_kind: &'static ScaleKind,
+    ) -> [(&'static Note, &'static Accidental); DEGREES_IN_SCALE as usize] {
+        let helper = |note: &'static Note,
+                      accidental: &'static Accidental|
+         -> [(&'static Note, &'static Accidental); DEGREES_IN_SCALE as usize] {
+            let key_signature = self.get_key_signature(note, accidental);
 
-            if position == position_of_degree {
-                return Some(degree);
+            let mut scale = [(&Note::C, &Accidental::Natural); DEGREES_IN_SCALE as usize];
+            let start_index = note.get_index();
+
+            for index in 0..(DEGREES_IN_SCALE as usize) {
+                let note =
+                    Note::get_by_index((start_index + index as u8) % DEGREES_IN_SCALE).unwrap();
+
+                scale[index] = (
+                    note,
+                    if key_signature.1.contains(&note) {
+                        key_signature.0
+                    } else {
+                        &Accidental::Natural
+                    },
+                );
+            }
+
+            return scale;
+        };
+
+        match scale_kind {
+            ScaleKind::Major => helper(self.note, self.accidental),
+            ScaleKind::Minor => {
+                // get the tonic of the major scale whose
+                // relative minor scale has the tonic of this key
+                let major_of_minor = self.get_major_of_minor();
+
+                // get the major scale of that tonic
+                let mut scale = helper(major_of_minor.0, major_of_minor.1);
+
+                // shift right three times
+
+                let shift_by = 2;
+                let mut tmp1 = scale[0];
+                let mut tmp2;
+                let mut shift_to: i8 = 0;
+
+                for index in 0..(DEGREES_IN_SCALE as usize) {
+                    /*
+                     * shifting a by three to b will need the following steps
+                     *
+                     * a: 0 1 2 3 4 5 6
+                     * b: 4 5 6 0 1 2 3
+                     *
+                     * 4 1 2 3 4 5 6 | 0
+                     * 4 1 2 0 4 5 6 | 3
+                     * 4 1 2 0 4 5 3 | 6
+                     * 4 1 6 0 4 5 3 | 2
+                     * 4 1 6 0 4 2 3 | 5
+                     * 4 5 6 0 4 2 3 | 1
+                     * 4 5 6 0 1 2 3 | 4
+                     */
+
+                    if index == 0 {
+                        let shift_from: i8 =
+                            (shift_to - shift_by).rem_euclid(DEGREES_IN_SCALE as i8);
+                        tmp1 = scale[shift_to as usize];
+                        scale[shift_to as usize] = scale[shift_from as usize];
+                    } else {
+                        tmp2 = scale[shift_to as usize];
+                        scale[shift_to as usize] = tmp1;
+                        tmp1 = tmp2;
+                    }
+
+                    shift_to = (shift_to + shift_by).rem_euclid(DEGREES_IN_SCALE as i8);
+                }
+
+                return scale;
             }
         }
-
-        return None;
     }
 
-    /**
-     * Get the position of the tone in the twelve-tone system based
-     * on the given scale-degree of the major scale.
-     * For the Key of Mi the positions for the
-     * degrees from 1 to 7 would be the following.
-     * degree:   1  2  3  4  5  6  7 |  8 / 1
-     * position: 4  6  8  9 11 13 15 | 16 (-12 = 4)
-     *             +2 +2 +1 +2 +2 +2 | +1
-     */
-    fn get_position(&self, degree: u8) -> u8 {
-        let mut end: u8 = degree - 1;
-
-        let mut position: u8 = 0;
-
-        if end > DEGREES_IN_SCALE {
-            end -= DEGREES_IN_SCALE;
-            let octaves: u8 = end / DEGREES_IN_SCALE;
-            end %= DEGREES_IN_SCALE;
-            position += (octaves + 1) * OCTAVE_ADDITIVE;
-            position += SEMITONES_IN_MAJOR_SCALE[0..end as usize].iter().sum::<u8>();
-        } else {
-            position = SEMITONES_IN_MAJOR_SCALE[0..end as usize].iter().sum::<u8>();
-        }
-
-        let offset = SEMITONES_IN_MAJOR_SCALE[0..self.note.get_index() as usize]
-            .iter()
-            .sum::<u8>();
-        position += offset;
-
-        position = match self.accidental {
-            Accidental::Flat => position - 1,
-            Accidental::Natural => position,
-            Accidental::Sharp => position + 1,
-        };
-
-        return position + 1;
-    }
-
-    /**
-     * Calculate an array of consecutive pitches of the given scale using the given Temperament.
-     * The Pitches will start in the given octave with the given scale-degree and comprise the given
-     * number of pitches.
-     */
-    pub fn get_scale(
+    /// Calculate an array of consecutive pitches of the given scale using the given Temperament.
+    /// The Pitches will start in the given octave with the given scale-degree and comprise the given
+    /// number of pitches.
+    ///
+    /// # Arguments
+    ///
+    /// * `scale_kind` - the kind of the scale
+    /// * `octave` - the octave where the pitches should start in
+    /// * `degree` - the starting degree of the scale to generate, a number between 1 and 7
+    /// * `number_of_pitches` - the number of pitches to generate
+    ///
+    pub fn get_scale_pitches(
         &self,
         scale_kind: &'static ScaleKind,
         octave: i16,
         degree: u8,
         number_of_pitches: u8,
     ) -> Option<Vec<Pitch>> {
-        match scale_kind {
-            ScaleKind::Major => {
-                let mut pitches: Vec<Pitch> = vec![];
+        if degree < 1 || degree > 7 {
+            return None;
+        }
 
-                for degree in degree..(degree + number_of_pitches) {
-                    match self
-                        .temperament
-                        .get_pitch(octave, self.get_position(degree) as i16)
-                    {
-                        Some(pitch) => pitches.push(pitch),
-                        None => return None,
-                    }
-                }
+        let mut pitches: Vec<Pitch> = vec![];
+        let scale: [(&'static Note, &'static Accidental); DEGREES_IN_SCALE as usize] =
+            self.get_scale(scale_kind);
 
-                return Some(pitches);
+        let mut octaves: i16 = 0;
+        let mut pitches_in_octave = 0;
+
+        for degree in degree..(degree + number_of_pitches) {
+            let tone = scale[(degree as i8 - 1).rem_euclid(DEGREES_IN_SCALE as i8) as usize];
+            if degree > 1
+                && octaves == 0
+                && ((tone.0 == &Note::C && tone.1 == &Accidental::Natural)
+                    || (tone.0 == &Note::B && tone.1 == &Accidental::Sharp)
+                    || (tone.0 == &Note::C && tone.1 == &Accidental::Sharp)
+                    || (tone.0 == &Note::D && tone.1 == &Accidental::Flat))
+            {
+                octaves += 1;
             }
-            ScaleKind::RelativeMinor => {
-                let mut degree = degree - 1;
-                degree -= 5;
-                degree %= DEGREES_IN_SCALE;
-                degree += 1;
 
-                let submediant = self.get_position(1 + 5);
+            if octaves > 0 {
+                pitches_in_octave += 1;
 
-                match self.key_by_position(submediant, false) {
-                    Some(relative_minor) => relative_minor.get_scale(
-                        &ScaleKind::Major,
-                        octave,
-                        degree as u8,
-                        number_of_pitches,
-                    ),
-                    None => None,
+                if pitches_in_octave == (DEGREES_IN_SCALE + 1) {
+                    octaves += 1;
+                    pitches_in_octave = 1;
                 }
             }
-            ScaleKind::Minor => {
-                let tonic = self.get_position(1);
-                match self.key_by_position(tonic + 3, false) {
-                    Some(minor) => {
-                        let mapped_tonic_degree = minor.get_degree(tonic).unwrap();
-                        let mapped_tonic = minor.get_position(mapped_tonic_degree);
 
-                        let octave = octave
-                            + ((tonic as i8 - mapped_tonic as i8) / OCTAVE_ADDITIVE as i8) as i16;
-
-                        return minor.get_scale(
-                            &ScaleKind::Major,
-                            octave,
-                            mapped_tonic_degree + (degree - 1),
-                            number_of_pitches,
-                        );
-                    }
-                    None => None,
-                }
-            }
-            ScaleKind::Chromatic => {
-                let mut pitches: Vec<Pitch> = vec![];
-
-                for degree in degree..(degree + number_of_pitches) {
-                    match self.temperament.get_pitch(octave, degree as i16) {
-                        Some(pitch) => pitches.push(pitch),
-                        None => return None,
-                    }
-                }
-
-                return Some(pitches);
+            match self
+                .temperament
+                .get_pitch(octave + octaves, tone)
+            {
+                Some(pitch) => pitches.push(pitch),
+                None => return None,
             }
         }
+
+        return Some(pitches);
     }
 }
 
@@ -290,49 +358,10 @@ mod tests {
     use std::rc::Rc;
 
     #[test]
-    fn test_get_position() {
-        let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-
-        let key = Key::new(&Note::C, &Accidental::Natural, Rc::clone(&temp));
-        assert_eq!(key.get_position(1), 1); // c
-        assert_eq!(key.get_position(2), 3); // d
-        assert_eq!(key.get_position(3), 5); // e
-        assert_eq!(key.get_position(4), 6); // f
-        assert_eq!(key.get_position(5), 8); // g
-        assert_eq!(key.get_position(6), 10); // a
-        assert_eq!(key.get_position(7), 12); // b
-        assert_eq!(key.get_position(8), 13); // c
-        assert_eq!(key.get_position(9), 15); // d
-        assert_eq!(key.get_position(10), 17); // e
-        assert_eq!(key.get_position(11), 18); // f
-        assert_eq!(key.get_position(12), 20); // g
-        assert_eq!(key.get_position(13), 22); // a
-        assert_eq!(key.get_position(14), 24); // b
-        assert_eq!(key.get_position(15), 25); // c
-
-        let key = Key::new(&Note::G, &Accidental::Natural, Rc::clone(&temp));
-        assert_eq!(key.get_position(1), 8); // g
-        assert_eq!(key.get_position(2), 10); // a
-        assert_eq!(key.get_position(3), 12); // b
-        assert_eq!(key.get_position(4), 13); // c
-        assert_eq!(key.get_position(5), 15); // d
-        assert_eq!(key.get_position(6), 17); // e
-        assert_eq!(key.get_position(7), 19); // f#
-        assert_eq!(key.get_position(8), 20); // g
-        assert_eq!(key.get_position(9), 22); // a
-        assert_eq!(key.get_position(10), 24); // b
-        assert_eq!(key.get_position(11), 25); // c
-        assert_eq!(key.get_position(12), 27); // d
-        assert_eq!(key.get_position(13), 29); // e
-        assert_eq!(key.get_position(14), 31); // f#
-        assert_eq!(key.get_position(15), 32); // g
-    }
-
-    #[test]
     fn test_key_c_natural_major() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let key = Key::new(&Note::C, &Accidental::Natural, temp);
-        match key.get_scale(&ScaleKind::Major, 4, 1, 8) {
+        match key.get_scale_pitches(&ScaleKind::Major, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
                 assert_eq!(format!("{:.3?}", pitches[0]), "Pitch(261.626)" /*C_4*/);
@@ -349,10 +378,192 @@ mod tests {
     }
 
     #[test]
+    fn test_key_g_natural_major() {
+        let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
+        let key = Key::new(&Note::G, &Accidental::Natural, temp);
+        match key.get_scale_pitches(&ScaleKind::Major, 4, 1, 8) {
+            Some(pitches) => {
+                assert_eq!(pitches.len(), 8);
+                assert_eq!(
+                    format!("{:.3?}", pitches[0]),
+                    "Pitch(391.995)" /*G_4 - 2*/
+                );
+                assert_eq!(format!("{:.3?}", pitches[1]), "Pitch(440.000)" /*A_4*/);
+                assert_eq!(
+                    format!("{:.3?}", pitches[2]),
+                    "Pitch(493.883)" /*B_4 + 2*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[3]),
+                    "Pitch(523.251)" /*C_5 + 3*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[4]),
+                    "Pitch(587.330)" /*D_5 + 5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[5]),
+                    "Pitch(659.255)" /*E_5 + 7*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[6]),
+                    "Pitch(739.989)" /*F#_5 + 9*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[7]),
+                    "Pitch(783.991)" /*G_5 + 10*/
+                );
+            }
+            None => panic!("expected some pitches"),
+        }
+    }
+
+    #[test]
+    fn test_key_d_flat_major() {
+        let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
+
+        let key_a = Key::new(&Note::D, &Accidental::Flat, Rc::clone(&temp));
+        match key_a.get_scale_pitches(&ScaleKind::Major, 4, 1, 15) {
+            Some(pitches) => {
+                assert_eq!(pitches.len(), 15);
+                assert_eq!(
+                    format!("{:.3?}", pitches[0]),
+                    "Pitch(277.183)" /*(+0=-8) Db_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[1]),
+                    "Pitch(311.127)" /*(+2=-6) Eb_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[2]),
+                    "Pitch(349.228)" /*(+2=-4) F_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[3]),
+                    "Pitch(369.994)" /*(+1=-3) Gb_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[4]),
+                    "Pitch(415.305)" /*(+2=-1) Ab_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[5]),
+                    "Pitch(466.164)" /*(+2=1) Bb_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[6]),
+                    "Pitch(523.251)" /*(+2=3) C_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[7]),
+                    "Pitch(554.365)" /*(+1=4) Db_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[8]),
+                    "Pitch(622.254)" /*(+2=6) Eb_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[9]),
+                    "Pitch(698.456)" /*(+2=8) F_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[10]),
+                    "Pitch(739.989)" /*(+1=9) Gb_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[11]),
+                    "Pitch(830.609)" /*(+2=11) Ab_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[12]),
+                    "Pitch(932.328)" /*(+2=13) Bb_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[13]),
+                    "Pitch(1046.502)" /*(+2=15) C_6*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[14]),
+                    "Pitch(1108.731)" /*(+1=16) Db_6*/
+                );
+            }
+            None => panic!("expected some pitches"),
+        }
+
+        let key_b = Key::new(&Note::C, &Accidental::Sharp, Rc::clone(&temp));
+        match key_b.get_scale_pitches(&ScaleKind::Major, 4, 1, 15) {
+            Some(pitches) => {
+                assert_eq!(pitches.len(), 15);
+                assert_eq!(
+                    format!("{:.3?}", pitches[0]),
+                    "Pitch(277.183)" /*(+0=-8) Db_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[1]),
+                    "Pitch(311.127)" /*(+2=-6) Eb_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[2]),
+                    "Pitch(349.228)" /*(+2=-4) F_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[3]),
+                    "Pitch(369.994)" /*(+1=-3) Gb_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[4]),
+                    "Pitch(415.305)" /*(+2=-1) Ab_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[5]),
+                    "Pitch(466.164)" /*(+2=1) Bb_4*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[6]),
+                    "Pitch(523.251)" /*(+2=3) C_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[7]),
+                    "Pitch(554.365)" /*(+1=4) Db_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[8]),
+                    "Pitch(622.254)" /*(+2=6) Eb_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[9]),
+                    "Pitch(698.456)" /*(+2=8) F_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[10]),
+                    "Pitch(739.989)" /*(+1=9) Gb_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[11]),
+                    "Pitch(830.609)" /*(+2=11) Ab_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[12]),
+                    "Pitch(932.328)" /*(+2=13) Bb_5*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[13]),
+                    "Pitch(1046.502)" /*(+2=15) C_6*/
+                );
+                assert_eq!(
+                    format!("{:.3?}", pitches[14]),
+                    "Pitch(1108.731)" /*(+1=16) Db_6*/
+                );
+            }
+            None => panic!("expected some pitches"),
+        }
+    }
+
+    #[test]
     fn test_key_g_flat_minor() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let key = Key::new(&Note::G, &Accidental::Flat, temp);
-        match key.get_scale(&ScaleKind::Minor, 4, 1, 8) {
+        match key.get_scale_pitches(&ScaleKind::Minor, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
 
@@ -400,7 +611,7 @@ mod tests {
     fn test_key_f_sharp_minor() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let key = Key::new(&Note::F, &Accidental::Sharp, temp);
-        match key.get_scale(&ScaleKind::Minor, 4, 1, 8) {
+        match key.get_scale_pitches(&ScaleKind::Minor, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
 

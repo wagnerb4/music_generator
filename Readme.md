@@ -10,5 +10,4 @@ To generate a simple melody in G-Flat-Minor run the following.
 
 # Roadmap
 
-
 - Implement an easy way to generate a type of JustIntonation for an arbitraty key.

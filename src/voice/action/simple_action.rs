@@ -21,7 +21,7 @@ impl<T: notation::Temperament> Action<NeutralActionState> for SimpleAction<T> {
         symbol: char,
         _state: RefMut<NeutralActionState>,
     ) -> Result<notation::MusicalElement, ActionError> {
-        if let Some(pitches) = self.key.get_scale(self.scale_kind, 4, 1, 7 * 7) {
+        if let Some(pitches) = self.key.get_scale_pitches(self.scale_kind, 4, 1, 7 * 7) {
             let char_pos = symbol as u16;
             const CHAR_POS_CAP_A: u16 = 'A' as u16;
             const CHAR_POS_CAP_Z: u16 = 'Z' as u16;

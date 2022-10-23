@@ -199,7 +199,7 @@ fn main() -> Result<()> {
         Rc::new(SimpleAction::new(key, match args.scale_kind {
            ScaleKind::Major => &musical_notation::ScaleKind::Major,
            ScaleKind::Minor => &musical_notation::ScaleKind::Minor,
-           ScaleKind::Chromatic => &musical_notation::ScaleKind::Chromatic,
+           ScaleKind::Chromatic => panic!("Not implemented!"),
         }));
 
     for atom in axiom.atoms() {

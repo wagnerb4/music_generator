@@ -1,4 +1,4 @@
-use super::{Accidental, Note, Pitch, OCTAVE_MULTIPLICATIVE};
+use super::{Accidental, NoteName, Pitch, Tone, OCTAVE_MULTIPLICATIVE};
 
 mod proportionen;
 
@@ -35,7 +35,7 @@ pub trait Temperament {
     /// * `octave`  - referes to the number of the octave in scientific pitch notation and can theoretically be lower than 0 or higher than 9
     /// * `tone` - refers to the tone of a note in the musical notation and consists of note name and its accidental
     ///
-    fn get_pitch(&self, octave: i16, tone: (&'static Note, &'static Accidental)) -> Option<Pitch>;
+    fn get_pitch(&self, octave: i16, tone: Tone) -> Option<Pitch>;
 
     /// defines the number of notes in an octave
     ///
@@ -52,29 +52,29 @@ pub trait Temperament {
 
 /// Returns the position of a tone in the twelve tone system.
 ///
-fn get_position(note: &'static Note, accidental: &'static Accidental) -> u8 {
-    match (note, accidental) {
-        (&Note::C, &Accidental::Flat) => 12,
-        (&Note::C, &Accidental::Natural) => 1,
-        (&Note::C, &Accidental::Sharp) => 2,
-        (&Note::D, &Accidental::Flat) => 2,
-        (&Note::D, &Accidental::Natural) => 3,
-        (&Note::D, &Accidental::Sharp) => 4,
-        (&Note::E, &Accidental::Flat) => 4,
-        (&Note::E, &Accidental::Natural) => 5,
-        (&Note::E, &Accidental::Sharp) => 6,
-        (&Note::F, &Accidental::Flat) => 5,
-        (&Note::F, &Accidental::Natural) => 6,
-        (&Note::F, &Accidental::Sharp) => 7,
-        (&Note::G, &Accidental::Flat) => 7,
-        (&Note::G, &Accidental::Natural) => 8,
-        (&Note::G, &Accidental::Sharp) => 9,
-        (&Note::A, &Accidental::Flat) => 9,
-        (&Note::A, &Accidental::Natural) => 10,
-        (&Note::A, &Accidental::Sharp) => 11,
-        (&Note::B, &Accidental::Flat) => 11,
-        (&Note::B, &Accidental::Natural) => 12,
-        (&Note::B, &Accidental::Sharp) => 1,
+fn get_position(tone: Tone) -> u8 {
+    match (tone.note_name, tone.accidental) {
+        (&NoteName::C, &Accidental::Flat) => 12,
+        (&NoteName::C, &Accidental::Natural) => 1,
+        (&NoteName::C, &Accidental::Sharp) => 2,
+        (&NoteName::D, &Accidental::Flat) => 2,
+        (&NoteName::D, &Accidental::Natural) => 3,
+        (&NoteName::D, &Accidental::Sharp) => 4,
+        (&NoteName::E, &Accidental::Flat) => 4,
+        (&NoteName::E, &Accidental::Natural) => 5,
+        (&NoteName::E, &Accidental::Sharp) => 6,
+        (&NoteName::F, &Accidental::Flat) => 5,
+        (&NoteName::F, &Accidental::Natural) => 6,
+        (&NoteName::F, &Accidental::Sharp) => 7,
+        (&NoteName::G, &Accidental::Flat) => 7,
+        (&NoteName::G, &Accidental::Natural) => 8,
+        (&NoteName::G, &Accidental::Sharp) => 9,
+        (&NoteName::A, &Accidental::Flat) => 9,
+        (&NoteName::A, &Accidental::Natural) => 10,
+        (&NoteName::A, &Accidental::Sharp) => 11,
+        (&NoteName::B, &Accidental::Flat) => 11,
+        (&NoteName::B, &Accidental::Natural) => 12,
+        (&NoteName::B, &Accidental::Sharp) => 1,
     }
 }
 
@@ -87,8 +87,8 @@ impl Temperament for EqualTemperament {
         EqualTemperament { pitch_standard }
     }
 
-    fn get_pitch(&self, octave: i16, tone: (&'static Note, &'static Accidental)) -> Option<Pitch> {
-        let position: i16 = get_position(tone.0, tone.1) as i16;
+    fn get_pitch(&self, octave: i16, tone: Tone) -> Option<Pitch> {
+        let position: i16 = get_position(tone) as i16;
         let octave_intervall =
             (octave - REFERENCE_PITCH_OCTAVE as i16) * Self::get_octave_additive() as i16;
         let relative_a = position - Self::get_reference_pitch_degree() as i16;
@@ -217,50 +217,35 @@ impl SevenToneTemperament for JustIntonation {
 #[cfg(test)]
 mod tests {
     use super::{
-        proportionen, Accidental, EqualTemperament, JustIntonation, Note, SevenToneTemperament,
-        Temperament, STUTTGART_PITCH,
+        proportionen, EqualTemperament, JustIntonation, SevenToneTemperament, Temperament, Tone,
+        STUTTGART_PITCH,
     };
 
     #[test]
     fn equal_temperament_test() {
         let temp = EqualTemperament::new(STUTTGART_PITCH);
         assert_eq!(
-            format!(
-                "{:.3?}",
-                temp.get_pitch(4, (&Note::A, &Accidental::Natural))
-            ),
+            format!("{:.3?}", temp.get_pitch(4, Tone::from("A").unwrap())),
             "Some(Pitch(440.000))"
         );
         assert_eq!(
-            format!(
-                "{:.3?}",
-                temp.get_pitch(4, (&Note::C, &Accidental::Natural))
-            ),
+            format!("{:.3?}", temp.get_pitch(4, Tone::from("C").unwrap())),
             "Some(Pitch(261.626))"
         );
         assert_eq!(
-            format!("{:.3?}", temp.get_pitch(4, (&Note::B, &Accidental::Sharp))),
+            format!("{:.3?}", temp.get_pitch(4, Tone::from("B#").unwrap())),
             "Some(Pitch(261.626))"
         );
         assert_eq!(
-            format!(
-                "{:.3?}",
-                temp.get_pitch(4, (&Note::B, &Accidental::Natural))
-            ),
+            format!("{:.3?}", temp.get_pitch(4, Tone::from("B").unwrap())),
             "Some(Pitch(493.883))"
         );
         assert_eq!(
-            format!(
-                "{:.3?}",
-                temp.get_pitch(5, (&Note::C, &Accidental::Natural))
-            ),
+            format!("{:.3?}", temp.get_pitch(5, Tone::from("C").unwrap())),
             "Some(Pitch(523.251))"
         );
         assert_eq!(
-            format!(
-                "{:.3?}",
-                temp.get_pitch(5, (&Note::C, &Accidental::Natural))
-            ),
+            format!("{:.3?}", temp.get_pitch(5, Tone::from("C").unwrap())),
             "Some(Pitch(523.251))"
         );
     }

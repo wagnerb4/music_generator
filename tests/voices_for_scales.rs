@@ -1,5 +1,5 @@
 use music_generator::musical_notation::{
-    Accidental, Duration, EqualTemperament, Key, MusicalElement, Note, Pitch, ScaleKind,
+    Duration, EqualTemperament, Key, MusicalElement, Tone, Pitch, ScaleKind,
     Temperament, Volume, M, STUTTGART_PITCH,
 };
 
@@ -65,7 +65,7 @@ fn sequence_helper(voice: Voice) {
 #[test]
 fn voice_of_c_major_seven_octaves() {
     let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-    let key = Key::new(&Note::C, &Accidental::Natural, temp);
+    let key = Key::new(Tone::from("C").unwrap(), temp);
     let axiom: Axiom = Axiom::from("AHOVcjqBIPWdkrCJQXelsDKRYfmtELSZgnuFMTahovGNUbipw").unwrap();
 
     let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
@@ -148,7 +148,7 @@ fn voice_of_c_major_seven_octaves() {
 #[test]
 fn voice_of_d_flat_major_two_octave_scale() {
     let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-    let key = Key::new(&Note::C, &Accidental::Sharp, temp);
+    let key = Key::new(Tone::from("C#").unwrap(), temp);
     let axiom: Axiom = Axiom::from("ABCDEFGHIJKLMNO").unwrap();
 
     let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();

@@ -1,7 +1,7 @@
 mod pitch;
 pub use pitch::temperament::{EqualTemperament, Temperament};
 pub use pitch::temperament::{BAROQUE_PITCH, CHORTON_PITCH, CLASSICAL_PITCH, STUTTGART_PITCH};
-pub use pitch::{Accidental, Key, Note, Pitch, ScaleKind};
+pub use pitch::{Key, Pitch, ScaleKind, Tone};
 
 mod duration;
 pub use duration::Duration;

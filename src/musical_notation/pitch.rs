@@ -29,7 +29,7 @@ pub enum Accidental {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Note {
+pub enum NoteName {
     C,
     D,
     E,
@@ -39,29 +39,74 @@ pub enum Note {
     B,
 }
 
-impl Note {
+impl NoteName {
     fn get_index(&self) -> u8 {
         match self {
-            Note::C => 0,
-            Note::D => 1,
-            Note::E => 2,
-            Note::F => 3,
-            Note::G => 4,
-            Note::A => 5,
-            Note::B => 6,
+            NoteName::C => 0,
+            NoteName::D => 1,
+            NoteName::E => 2,
+            NoteName::F => 3,
+            NoteName::G => 4,
+            NoteName::A => 5,
+            NoteName::B => 6,
         }
     }
 
     fn get_by_index(index: u8) -> Result<&'static Self, ()> {
         match index {
-            0 => Ok(&Note::C),
-            1 => Ok(&Note::D),
-            2 => Ok(&Note::E),
-            3 => Ok(&Note::F),
-            4 => Ok(&Note::G),
-            5 => Ok(&Note::A),
-            6 => Ok(&Note::B),
+            0 => Ok(&NoteName::C),
+            1 => Ok(&NoteName::D),
+            2 => Ok(&NoteName::E),
+            3 => Ok(&NoteName::F),
+            4 => Ok(&NoteName::G),
+            5 => Ok(&NoteName::A),
+            6 => Ok(&NoteName::B),
             7.. => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tone {
+    note_name: &'static NoteName,
+    accidental: &'static Accidental,
+}
+
+impl Tone {
+    pub fn new(note_name: &'static NoteName, accidental: &'static Accidental) -> Self {
+        Tone {
+            note_name,
+            accidental,
+        }
+    }
+
+    pub fn from(string: &str) -> Result<Self, String> {
+        match string {
+            "Cb" => Ok(Self::new(&NoteName::C, &Accidental::Flat)),
+            "C" => Ok(Self::new(&NoteName::C, &Accidental::Natural)),
+            "C#" => Ok(Self::new(&NoteName::C, &Accidental::Sharp)),
+            "Db" => Ok(Self::new(&NoteName::D, &Accidental::Flat)),
+            "D" => Ok(Self::new(&NoteName::D, &Accidental::Natural)),
+            "D#" => Ok(Self::new(&NoteName::D, &Accidental::Sharp)),
+            "Eb" => Ok(Self::new(&NoteName::E, &Accidental::Flat)),
+            "E" => Ok(Self::new(&NoteName::E, &Accidental::Natural)),
+            "E#" => Ok(Self::new(&NoteName::E, &Accidental::Sharp)),
+            "Fb" => Ok(Self::new(&NoteName::F, &Accidental::Flat)),
+            "F" => Ok(Self::new(&NoteName::F, &Accidental::Natural)),
+            "F#" => Ok(Self::new(&NoteName::F, &Accidental::Sharp)),
+            "Gb" => Ok(Self::new(&NoteName::G, &Accidental::Flat)),
+            "G" => Ok(Self::new(&NoteName::G, &Accidental::Natural)),
+            "G#" => Ok(Self::new(&NoteName::G, &Accidental::Sharp)),
+            "Ab" => Ok(Self::new(&NoteName::A, &Accidental::Flat)),
+            "A" => Ok(Self::new(&NoteName::A, &Accidental::Natural)),
+            "A#" => Ok(Self::new(&NoteName::A, &Accidental::Sharp)),
+            "Bb" => Ok(Self::new(&NoteName::B, &Accidental::Flat)),
+            "B" => Ok(Self::new(&NoteName::B, &Accidental::Natural)),
+            "B#" => Ok(Self::new(&NoteName::B, &Accidental::Sharp)),
+            _ => Err(
+                "Please provide a valid tonic. Examples of correct values are 'C', 'F#', 'Gb'."
+                    .to_string(),
+            ),
         }
     }
 }
@@ -76,8 +121,7 @@ pub struct Key<T>
 where
     T: temperament::Temperament + Sized,
 {
-    note: &'static Note,
-    accidental: &'static Accidental,
+    tone: Tone,
     temperament: Rc<T>,
 }
 
@@ -85,39 +129,31 @@ impl<T> Key<T>
 where
     T: temperament::Temperament,
 {
-    pub fn new(note: &'static Note, accidental: &'static Accidental, temperament: Rc<T>) -> Self {
-        Key {
-            note,
-            accidental,
-            temperament,
-        }
+    pub fn new(tone: Tone, temperament: Rc<T>) -> Self {
+        Key { tone, temperament }
     }
 
-    /// Returns the notes with accidentials in the current major key.
+    /// Returns the note names with accidentials in the current major key.
     ///
-    fn get_key_signature(
-        &self,
-        note: &'static Note,
-        accidental: &'static Accidental,
-    ) -> (&'static Accidental, Vec<&'static Note>) {
-        let helper = |index: i8| -> (&'static Accidental, Vec<&'static Note>) {
-            let accidentals_sharp: [&'static Note; 7] = [
-                &Note::F,
-                &Note::C,
-                &Note::G,
-                &Note::D,
-                &Note::A,
-                &Note::E,
-                &Note::B,
+    fn get_key_signature(&self, tone: Tone) -> (&'static Accidental, Vec<&'static NoteName>) {
+        let helper = |index: i8| -> (&'static Accidental, Vec<&'static NoteName>) {
+            let accidentals_sharp: [&'static NoteName; 7] = [
+                &NoteName::F,
+                &NoteName::C,
+                &NoteName::G,
+                &NoteName::D,
+                &NoteName::A,
+                &NoteName::E,
+                &NoteName::B,
             ];
-            let accidentals_flat: [&'static Note; 7] = [
-                &Note::B,
-                &Note::E,
-                &Note::A,
-                &Note::D,
-                &Note::G,
-                &Note::C,
-                &Note::F,
+            let accidentals_flat: [&'static NoteName; 7] = [
+                &NoteName::B,
+                &NoteName::E,
+                &NoteName::A,
+                &NoteName::D,
+                &NoteName::G,
+                &NoteName::C,
+                &NoteName::F,
             ];
             return (
                 match index {
@@ -135,79 +171,75 @@ where
             );
         };
 
-        match (note, accidental) {
-            (&Note::C, &Accidental::Flat) => helper(-7),
-            (&Note::G, &Accidental::Flat) => helper(-6),
-            (&Note::D, &Accidental::Flat) => helper(-5),
-            (&Note::A, &Accidental::Flat) => helper(-4),
-            (&Note::G, &Accidental::Sharp) => helper(-4),
-            (&Note::E, &Accidental::Flat) => helper(-3),
-            (&Note::D, &Accidental::Sharp) => helper(-3),
-            (&Note::B, &Accidental::Flat) => helper(-2),
-            (&Note::A, &Accidental::Sharp) => helper(-2),
-            (&Note::F, &Accidental::Natural) => helper(-1),
-            (&Note::E, &Accidental::Sharp) => helper(-1),
-            (&Note::C, &Accidental::Natural) => helper(0),
-            (&Note::B, &Accidental::Sharp) => helper(0),
-            (&Note::G, &Accidental::Natural) => helper(1),
-            (&Note::D, &Accidental::Natural) => helper(2),
-            (&Note::A, &Accidental::Natural) => helper(3),
-            (&Note::E, &Accidental::Natural) => helper(4),
-            (&Note::F, &Accidental::Flat) => helper(4),
-            (&Note::B, &Accidental::Natural) => helper(5),
-            (&Note::F, &Accidental::Sharp) => helper(6),
-            (&Note::C, &Accidental::Sharp) => helper(7),
+        match (tone.note_name, tone.accidental) {
+            (&NoteName::C, &Accidental::Flat) => helper(-7),
+            (&NoteName::G, &Accidental::Flat) => helper(-6),
+            (&NoteName::D, &Accidental::Flat) => helper(-5),
+            (&NoteName::A, &Accidental::Flat) => helper(-4),
+            (&NoteName::G, &Accidental::Sharp) => helper(-4),
+            (&NoteName::E, &Accidental::Flat) => helper(-3),
+            (&NoteName::D, &Accidental::Sharp) => helper(-3),
+            (&NoteName::B, &Accidental::Flat) => helper(-2),
+            (&NoteName::A, &Accidental::Sharp) => helper(-2),
+            (&NoteName::F, &Accidental::Natural) => helper(-1),
+            (&NoteName::E, &Accidental::Sharp) => helper(-1),
+            (&NoteName::C, &Accidental::Natural) => helper(0),
+            (&NoteName::B, &Accidental::Sharp) => helper(0),
+            (&NoteName::G, &Accidental::Natural) => helper(1),
+            (&NoteName::D, &Accidental::Natural) => helper(2),
+            (&NoteName::A, &Accidental::Natural) => helper(3),
+            (&NoteName::E, &Accidental::Natural) => helper(4),
+            (&NoteName::F, &Accidental::Flat) => helper(4),
+            (&NoteName::B, &Accidental::Natural) => helper(5),
+            (&NoteName::F, &Accidental::Sharp) => helper(6),
+            (&NoteName::C, &Accidental::Sharp) => helper(7),
         }
     }
 
     /// Returns the tonic of the major scale, whose
     /// relative minor scale has the tonic of this key.
     ///
-    fn get_major_of_minor(&self) -> (&'static Note, &'static Accidental) {
-        match (self.note, self.accidental) {
-            (&Note::C, &Accidental::Flat) => (&Note::D, &Accidental::Natural),
-            (&Note::G, &Accidental::Flat) => (&Note::A, &Accidental::Natural),
-            (&Note::D, &Accidental::Flat) => (&Note::E, &Accidental::Natural),
-            (&Note::A, &Accidental::Flat) => (&Note::C, &Accidental::Flat),
-            (&Note::G, &Accidental::Sharp) => (&Note::C, &Accidental::Flat),
-            (&Note::E, &Accidental::Flat) => (&Note::G, &Accidental::Flat),
-            (&Note::D, &Accidental::Sharp) => (&Note::G, &Accidental::Flat),
-            (&Note::B, &Accidental::Flat) => (&Note::D, &Accidental::Flat),
-            (&Note::A, &Accidental::Sharp) => (&Note::D, &Accidental::Flat),
-            (&Note::F, &Accidental::Natural) => (&Note::A, &Accidental::Flat),
-            (&Note::E, &Accidental::Sharp) => (&Note::A, &Accidental::Flat),
-            (&Note::C, &Accidental::Natural) => (&Note::E, &Accidental::Flat),
-            (&Note::B, &Accidental::Sharp) => (&Note::E, &Accidental::Flat),
-            (&Note::G, &Accidental::Natural) => (&Note::B, &Accidental::Flat),
-            (&Note::D, &Accidental::Natural) => (&Note::F, &Accidental::Natural),
-            (&Note::A, &Accidental::Natural) => (&Note::C, &Accidental::Natural),
-            (&Note::E, &Accidental::Natural) => (&Note::G, &Accidental::Natural),
-            (&Note::F, &Accidental::Flat) => (&Note::G, &Accidental::Natural),
-            (&Note::B, &Accidental::Natural) => (&Note::D, &Accidental::Natural),
-            (&Note::F, &Accidental::Sharp) => (&Note::A, &Accidental::Natural),
-            (&Note::C, &Accidental::Sharp) => (&Note::E, &Accidental::Natural),
+    fn get_major_of_minor(&self) -> Tone {
+        match (self.tone.note_name, self.tone.accidental) {
+            (&NoteName::C, &Accidental::Flat) => Tone::new(&NoteName::D, &Accidental::Natural),
+            (&NoteName::G, &Accidental::Flat) => Tone::new(&NoteName::A, &Accidental::Natural),
+            (&NoteName::D, &Accidental::Flat) => Tone::new(&NoteName::E, &Accidental::Natural),
+            (&NoteName::A, &Accidental::Flat) => Tone::new(&NoteName::C, &Accidental::Flat),
+            (&NoteName::G, &Accidental::Sharp) => Tone::new(&NoteName::C, &Accidental::Flat),
+            (&NoteName::E, &Accidental::Flat) => Tone::new(&NoteName::G, &Accidental::Flat),
+            (&NoteName::D, &Accidental::Sharp) => Tone::new(&NoteName::G, &Accidental::Flat),
+            (&NoteName::B, &Accidental::Flat) => Tone::new(&NoteName::D, &Accidental::Flat),
+            (&NoteName::A, &Accidental::Sharp) => Tone::new(&NoteName::D, &Accidental::Flat),
+            (&NoteName::F, &Accidental::Natural) => Tone::new(&NoteName::A, &Accidental::Flat),
+            (&NoteName::E, &Accidental::Sharp) => Tone::new(&NoteName::A, &Accidental::Flat),
+            (&NoteName::C, &Accidental::Natural) => Tone::new(&NoteName::E, &Accidental::Flat),
+            (&NoteName::B, &Accidental::Sharp) => Tone::new(&NoteName::E, &Accidental::Flat),
+            (&NoteName::G, &Accidental::Natural) => Tone::new(&NoteName::B, &Accidental::Flat),
+            (&NoteName::D, &Accidental::Natural) => Tone::new(&NoteName::F, &Accidental::Natural),
+            (&NoteName::A, &Accidental::Natural) => Tone::new(&NoteName::C, &Accidental::Natural),
+            (&NoteName::E, &Accidental::Natural) => Tone::new(&NoteName::G, &Accidental::Natural),
+            (&NoteName::F, &Accidental::Flat) => Tone::new(&NoteName::G, &Accidental::Natural),
+            (&NoteName::B, &Accidental::Natural) => Tone::new(&NoteName::D, &Accidental::Natural),
+            (&NoteName::F, &Accidental::Sharp) => Tone::new(&NoteName::A, &Accidental::Natural),
+            (&NoteName::C, &Accidental::Sharp) => Tone::new(&NoteName::E, &Accidental::Natural),
         }
     }
 
     /// Returns the notes and accidentals of the current key.
     ///
-    fn get_scale(
-        &self,
-        scale_kind: &'static ScaleKind,
-    ) -> [(&'static Note, &'static Accidental); DEGREES_IN_SCALE as usize] {
-        let helper = |note: &'static Note,
-                      accidental: &'static Accidental|
-         -> [(&'static Note, &'static Accidental); DEGREES_IN_SCALE as usize] {
-            let key_signature = self.get_key_signature(note, accidental);
+    fn get_scale(&self, scale_kind: &'static ScaleKind) -> [Tone; DEGREES_IN_SCALE as usize] {
+        let helper = |tone: Tone| -> [Tone; DEGREES_IN_SCALE as usize] {
+            let key_signature = self.get_key_signature(tone);
 
-            let mut scale = [(&Note::C, &Accidental::Natural); DEGREES_IN_SCALE as usize];
-            let start_index = note.get_index();
+            let mut scale =
+                [Tone::new(&NoteName::C, &Accidental::Natural); DEGREES_IN_SCALE as usize];
+            let start_index = tone.note_name.get_index();
 
             for index in 0..(DEGREES_IN_SCALE as usize) {
                 let note =
-                    Note::get_by_index((start_index + index as u8) % DEGREES_IN_SCALE).unwrap();
+                    NoteName::get_by_index((start_index + index as u8) % DEGREES_IN_SCALE).unwrap();
 
-                scale[index] = (
+                scale[index] = Tone::new(
                     note,
                     if key_signature.1.contains(&note) {
                         key_signature.0
@@ -221,14 +253,14 @@ where
         };
 
         match scale_kind {
-            ScaleKind::Major => helper(self.note, self.accidental),
+            ScaleKind::Major => helper(self.tone),
             ScaleKind::Minor => {
                 // get the tonic of the major scale whose
                 // relative minor scale has the tonic of this key
-                let major_of_minor = self.get_major_of_minor();
+                let major_of_minor: Tone = self.get_major_of_minor();
 
                 // get the major scale of that tonic
-                let mut scale = helper(major_of_minor.0, major_of_minor.1);
+                let mut scale = helper(major_of_minor);
 
                 // shift right three times
 
@@ -295,8 +327,7 @@ where
         }
 
         let mut pitches: Vec<Pitch> = vec![];
-        let scale: [(&'static Note, &'static Accidental); DEGREES_IN_SCALE as usize] =
-            self.get_scale(scale_kind);
+        let scale: [Tone; DEGREES_IN_SCALE as usize] = self.get_scale(scale_kind);
 
         let mut octaves: i16 = 0;
         let mut pitches_in_octave = 0;
@@ -305,10 +336,10 @@ where
             let tone = scale[(degree as i8 - 1).rem_euclid(DEGREES_IN_SCALE as i8) as usize];
             if degree > 1
                 && octaves == 0
-                && ((tone.0 == &Note::C && tone.1 == &Accidental::Natural)
-                    || (tone.0 == &Note::B && tone.1 == &Accidental::Sharp)
-                    || (tone.0 == &Note::C && tone.1 == &Accidental::Sharp)
-                    || (tone.0 == &Note::D && tone.1 == &Accidental::Flat))
+                && ((tone.note_name == &NoteName::C && tone.accidental == &Accidental::Natural)
+                    || (tone.note_name == &NoteName::B && tone.accidental == &Accidental::Sharp)
+                    || (tone.note_name == &NoteName::C && tone.accidental == &Accidental::Sharp)
+                    || (tone.note_name == &NoteName::D && tone.accidental == &Accidental::Flat))
             {
                 octaves += 1;
             }
@@ -322,10 +353,7 @@ where
                 }
             }
 
-            match self
-                .temperament
-                .get_pitch(octave + octaves, tone)
-            {
+            match self.temperament.get_pitch(octave + octaves, tone) {
                 Some(pitch) => pitches.push(pitch),
                 None => return None,
             }
@@ -340,10 +368,10 @@ where
     T: temperament::Temperament,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.accidental {
-            Accidental::Flat => write!(f, "{:?}b", self.note),
-            Accidental::Natural => write!(f, "{:?}", self.note),
-            Accidental::Sharp => write!(f, "{:?}#", self.note),
+        match self.tone.accidental {
+            Accidental::Flat => write!(f, "{:?}b", self.tone.note_name),
+            Accidental::Natural => write!(f, "{:?}", self.tone.note_name),
+            Accidental::Sharp => write!(f, "{:?}#", self.tone.note_name),
         }
     }
 }
@@ -352,7 +380,7 @@ where
 mod tests {
     use super::{
         temperament::EqualTemperament, temperament::Temperament, temperament::STUTTGART_PITCH,
-        Accidental, Key, Note, ScaleKind,
+        Accidental, Key, NoteName, ScaleKind, Tone,
     };
 
     use std::rc::Rc;
@@ -360,7 +388,8 @@ mod tests {
     #[test]
     fn test_key_c_natural_major() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-        let key = Key::new(&Note::C, &Accidental::Natural, temp);
+        let c_natural = Tone::new(&NoteName::C, &Accidental::Natural);
+        let key = Key::new(c_natural, temp);
         match key.get_scale_pitches(&ScaleKind::Major, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
@@ -380,7 +409,8 @@ mod tests {
     #[test]
     fn test_key_g_natural_major() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-        let key = Key::new(&Note::G, &Accidental::Natural, temp);
+        let g_natural = Tone::new(&NoteName::G, &Accidental::Natural);
+        let key = Key::new(g_natural, temp);
         match key.get_scale_pitches(&ScaleKind::Major, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
@@ -422,7 +452,10 @@ mod tests {
     fn test_key_d_flat_major() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
 
-        let key_a = Key::new(&Note::D, &Accidental::Flat, Rc::clone(&temp));
+        let d_flat = Tone::new(&NoteName::D, &Accidental::Flat);
+        let c_sharp = Tone::new(&NoteName::C, &Accidental::Sharp);
+
+        let key_a = Key::new(d_flat, Rc::clone(&temp));
         match key_a.get_scale_pitches(&ScaleKind::Major, 4, 1, 15) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 15);
@@ -490,7 +523,7 @@ mod tests {
             None => panic!("expected some pitches"),
         }
 
-        let key_b = Key::new(&Note::C, &Accidental::Sharp, Rc::clone(&temp));
+        let key_b = Key::new(c_sharp, Rc::clone(&temp));
         match key_b.get_scale_pitches(&ScaleKind::Major, 4, 1, 15) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 15);
@@ -562,7 +595,8 @@ mod tests {
     #[test]
     fn test_key_g_flat_minor() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-        let key = Key::new(&Note::G, &Accidental::Flat, temp);
+        let g_flat = Tone::new(&NoteName::G, &Accidental::Flat);
+        let key = Key::new(g_flat, temp);
         match key.get_scale_pitches(&ScaleKind::Minor, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
@@ -610,7 +644,8 @@ mod tests {
     #[test]
     fn test_key_f_sharp_minor() {
         let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-        let key = Key::new(&Note::F, &Accidental::Sharp, temp);
+        let f_sharp = Tone::new(&NoteName::F, &Accidental::Sharp);
+        let key = Key::new(f_sharp, temp);
         match key.get_scale_pitches(&ScaleKind::Minor, 4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);

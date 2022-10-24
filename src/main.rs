@@ -32,84 +32,11 @@ enum ScaleKind {
 #[derive(Clone, ArgEnum)]
 enum TemperamentKind {
     EqualTemperament,
-    JustIntonation
+    JustIntonation,
 }
 
-fn parse_tonic(s: &str) -> Result<(&'static musical_notation::Note, &'static musical_notation::Accidental), String> {
-    match s {
-        "C" => Ok((
-            &musical_notation::Note::C,
-            &musical_notation::Accidental::Natural,
-        )),
-        "C#" => Ok((
-            &musical_notation::Note::C,
-            &musical_notation::Accidental::Sharp,
-        )),
-        "Db" => Ok((
-            &musical_notation::Note::D,
-            &musical_notation::Accidental::Flat,
-        )),
-        "D" => Ok((
-            &musical_notation::Note::D,
-            &musical_notation::Accidental::Natural,
-        )),
-        "D#" => Ok((
-            &musical_notation::Note::D,
-            &musical_notation::Accidental::Sharp,
-        )),
-        "Eb" => Ok((
-            &musical_notation::Note::E,
-            &musical_notation::Accidental::Flat,
-        )),
-        "E" => Ok((
-            &musical_notation::Note::E,
-            &musical_notation::Accidental::Natural,
-        )),
-        "F" => Ok((
-            &musical_notation::Note::F,
-            &musical_notation::Accidental::Natural,
-        )),
-        "F#" => Ok((
-            &musical_notation::Note::F,
-            &musical_notation::Accidental::Sharp,
-        )),
-        "Gb" => Ok((
-            &musical_notation::Note::G,
-            &musical_notation::Accidental::Flat,
-        )),
-        "G" => Ok((
-            &musical_notation::Note::G,
-            &musical_notation::Accidental::Natural,
-        )),
-        "G#" => Ok((
-            &musical_notation::Note::G,
-            &musical_notation::Accidental::Sharp,
-        )),
-        "Ab" => Ok((
-            &musical_notation::Note::A,
-            &musical_notation::Accidental::Flat,
-        )),
-        "A" => Ok((
-            &musical_notation::Note::A,
-            &musical_notation::Accidental::Natural,
-        )),
-        "A#" => Ok((
-            &musical_notation::Note::A,
-            &musical_notation::Accidental::Sharp,
-        )),
-        "Bb" => Ok((
-            &musical_notation::Note::B,
-            &musical_notation::Accidental::Flat,
-        )),
-        "B" => Ok((
-            &musical_notation::Note::B,
-            &musical_notation::Accidental::Natural,
-        )),
-        _ => Err(
-            "Please provide a valid tonic. Examples of correct values are 'C', 'F#', 'Gb'."
-                .to_string(),
-        ),
-    }
+fn parse_tonic(s: &str) -> Result<musical_notation::Tone, String> {
+    musical_notation::Tone::from(s)
 }
 
 /// play a voice
@@ -125,7 +52,7 @@ struct Cli {
     #[clap(arg_enum, short, long, default_value_t = PitchStandard::Stuttgart)]
     pitch_standard: PitchStandard,
     #[clap(long, default_value = "C", value_parser = parse_tonic)]
-    scale_tonic: (&'static musical_notation::Note, &'static musical_notation::Accidental),
+    scale_tonic: musical_notation::Tone,
     #[clap(arg_enum, long, default_value_t = ScaleKind::Major)]
     scale_kind: ScaleKind,
     #[clap(arg_enum, long, default_value_t = TemperamentKind::EqualTemperament)]
@@ -183,24 +110,24 @@ fn main() -> Result<()> {
     };
 
     let temp = match args.temperament_kind {
-        TemperamentKind::EqualTemperament => Rc::new(musical_notation::EqualTemperament::new(pitch_standard)),
-        TemperamentKind::JustIntonation => panic!("Not implemented!")
+        TemperamentKind::EqualTemperament => {
+            Rc::new(musical_notation::EqualTemperament::new(pitch_standard))
+        }
+        TemperamentKind::JustIntonation => panic!("Not implemented!"),
     };
-    
-    let key = musical_notation::Key::new(
-        args.scale_tonic.0,
-        args.scale_tonic.1,
-        temp,
-    );
+
+    let key = musical_notation::Key::new(args.scale_tonic, temp);
 
     let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
 
-    let action: Rc<dyn Action<_>> =
-        Rc::new(SimpleAction::new(key, match args.scale_kind {
-           ScaleKind::Major => &musical_notation::ScaleKind::Major,
-           ScaleKind::Minor => &musical_notation::ScaleKind::Minor,
-           ScaleKind::Chromatic => panic!("Not implemented!"),
-        }));
+    let action: Rc<dyn Action<_>> = Rc::new(SimpleAction::new(
+        key,
+        match args.scale_kind {
+            ScaleKind::Major => &musical_notation::ScaleKind::Major,
+            ScaleKind::Minor => &musical_notation::ScaleKind::Minor,
+            ScaleKind::Chromatic => panic!("Not implemented!"),
+        },
+    ));
 
     for atom in axiom.atoms() {
         atom_types.insert(

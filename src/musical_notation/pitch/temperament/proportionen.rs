@@ -127,22 +127,22 @@ mod tests {
     }
 
     #[test]
-    fn equequivalence_test() {
+    fn equivalence_test() {
         let a = Proportion::new(1, 2);
         let b = Proportion::new(2, 4);
-        assert!(a == a, "a = {}", a);
-        assert!(a == b, "a = {}, b = {}", a, b);
+        assert_eq!(a, a, "a = {}", a);
+        assert_eq!(a, b, "a = {}, b = {}", a, b);
 
         let b = Proportion::new(4, 2);
-        assert!(a != b, "a = {}, b = {}", a, b);
+        assert_ne!(a, b, "a = {}, b = {}", a, b);
 
         let a = Proportion::new(5, 3);
         let b = Proportion::new(15, 9);
-        assert!(a == a, "a = {}", a);
-        assert!(a == b, "a = {}, b = {}", a, b);
+        assert_eq!(a, a, "a = {}", a);
+        assert_eq!(a, b, "a = {}, b = {}", a, b);
 
         let b = Proportion::new(14, 9);
-        assert!(a != b, "a = {}, b = {}", a, b);
+        assert_ne!(a, b, "a = {}, b = {}", a, b);
     }
 
     #[test]

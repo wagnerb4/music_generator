@@ -1,3 +1,5 @@
+/// Defines the volume of a Note
+///
 #[derive(Debug, Copy, Clone)]
 pub struct Volume(u8);
 

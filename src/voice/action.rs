@@ -1,8 +1,3 @@
-/* This module models the actions
- * that the Atoms of an Axiom, used to
- * build a Voice, can do.
- */
-
 use crate::l_system::{Atom, Axiom};
 use crate::musical_notation as notation;
 
@@ -12,20 +7,18 @@ use std::rc::Rc;
 
 pub mod error;
 
-/**
- * An ActionState is used to create a Voice.
- */
+/// An ActionState is used to create a Voice.
+///
 pub trait ActionState {
     fn get_neutral_state() -> Self;
     fn push(&self);
     fn pop(&mut self) -> Result<(), error::ActionError>;
 }
 
-/**
- * An Action is used to create a MusicalElement from
- * an Atom defined by its representative symbol. An Action
- * can modify the ActionState used to create a Voice.
- */
+/// An Action is used to create a MusicalElement from
+/// an Atom defined by its representative symbol. An Action
+/// can modify the ActionState used to create a Voice.
+///
 pub trait Action<S: ActionState> {
     fn gen_next_musical_element(
         &self,
@@ -74,14 +67,13 @@ impl super::Voice {
     }
 }
 
-/**
- * This is an ActionState that does
- * nothing. Used in the creation of very
- * simple Voices.
- *
- * Actions, that could use this ActionState are
- * one-to-one mappings Actions.
- */
+/// This is an ActionState that does
+/// nothing. Used in the creation of very
+/// simple Voices.
+///
+/// Actions, that could use this ActionState are
+/// one-to-one mappings Actions.
+///
 pub struct NeutralActionState {}
 
 impl ActionState for NeutralActionState {
@@ -94,12 +86,11 @@ impl ActionState for NeutralActionState {
     }
 }
 
-/**
- * A SimpleAction is an Action, that maps the 26 upper case
- * letters A to Z and the 23 lower case letters a to w in that
- * order to the notes of seven consecutive octaves of the given key.
- * The letter x will be mapped to a rest.
- */
+/// A SimpleAction is an Action, that maps the 26 upper case
+/// letters A to Z and the 23 lower case letters a to w in that
+/// order to the notes of seven consecutive octaves of the given key.
+/// The letter x will be mapped to a rest.
+///
 pub mod simple_action;
 
 pub use simple_action::SimpleAction;

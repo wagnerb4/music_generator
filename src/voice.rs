@@ -4,6 +4,7 @@ use fundsp::audiounit::AudioUnit64;
 use fundsp::math::bpm_hz;
 use fundsp::sequencer::Sequencer;
 
+/// Models the actions thatF Atoms, used to build a Voice, represent
 pub mod action;
 
 #[derive(Debug)]

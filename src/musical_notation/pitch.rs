@@ -5,9 +5,8 @@ use std::rc::Rc;
 
 pub mod temperament;
 
-/**
- * Defines the pitch of a note in Herz.
- */
+/// Defines the pitch of a note in Herz.
+///
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Pitch(pub f64);
 
@@ -18,8 +17,6 @@ impl Pitch {
 }
 
 const DEGREES_IN_SCALE: u8 = 7;
-//                                                              c  d  e  f  g  a  b  c
-const SEMITONES_IN_MAJOR_SCALE: [u8; DEGREES_IN_SCALE as usize] = [2, 2, 1, 2, 2, 2, 1];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Accidental {
@@ -61,7 +58,7 @@ impl NoteName {
             4 => Ok(&NoteName::G),
             5 => Ok(&NoteName::A),
             6 => Ok(&NoteName::B),
-            7.. => Err(()),
+            _ => Err(()),
         }
     }
 }
@@ -133,7 +130,7 @@ where
         Key { tone, temperament }
     }
 
-    /// Returns the note names with accidentials in the current major key.
+    /// Returns the note names with accidentals in the current major key.
     ///
     fn get_key_signature(&self, tone: Tone) -> (&'static Accidental, Vec<&'static NoteName>) {
         let helper = |index: i8| -> (&'static Accidental, Vec<&'static NoteName>) {
@@ -160,13 +157,13 @@ where
                     0 => &Accidental::Natural,
                     -7..=-1 => &Accidental::Flat,
                     1..=8 => &Accidental::Sharp,
-                    _ => panic!("logischer Fehler"),
+                    _ => panic!("logic error in code"),
                 },
                 match index {
                     0 => vec![],
                     -7..=-1 => accidentals_flat[0..(index.abs() as usize)].to_vec(),
                     1..=8 => accidentals_sharp[0..(index as usize)].to_vec(),
-                    _ => panic!("logischer Fehler"),
+                    _ => panic!("logic error in code"),
                 },
             );
         };

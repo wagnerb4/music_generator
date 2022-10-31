@@ -1,8 +1,19 @@
-const OCTAVE_ADDITIVE: u8 = 12;
 const OCTAVE_MULTIPLICATIVE: u8 = 2;
 
 use std::rc::Rc;
 
+/// Defines the temperaments that can be used to determine the
+/// frequency of a specific musical tone like 'c natural' or 'a flat'.
+///
+/// # Constants
+///
+/// Exports constants for different pitch standards.
+/// The number of such a constant always refers to
+/// the frequency of A_4 in Herz.
+///
+/// Definitions are taken form Oxford Composer Companion JS Bach,
+/// pp. 369–372. Oxford University Press, 1999
+///
 pub mod temperament;
 
 /// Defines the pitch of a note in Herz.

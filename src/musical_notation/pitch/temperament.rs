@@ -2,12 +2,6 @@ use super::{Accidental, NoteName, Pitch, Tone, OCTAVE_MULTIPLICATIVE};
 
 mod proportionen;
 
-/// Different pitch standards.
-/// The number always refers to
-/// the frequency of A_4 in Herz.
-/// Definitions are taken form Oxford Composer Companion JS Bach,
-/// pp. 369–372. Oxford University Press, 1999
-
 pub const STUTTGART_PITCH: f64 = 440.0;
 pub const BAROQUE_PITCH: f64 = 415.0;
 pub const CHORTON_PITCH: f64 = 466.0;

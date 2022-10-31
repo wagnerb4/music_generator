@@ -109,25 +109,25 @@ fn main() -> Result<()> {
         PitchStandard::Stuttgart => musical_notation::STUTTGART_PITCH,
     };
 
-    let temp = match args.temperament_kind {
-        TemperamentKind::EqualTemperament => {
-            Rc::new(musical_notation::EqualTemperament::new(pitch_standard))
-        }
+    let func = match args.temperament_kind {
+        TemperamentKind::EqualTemperament => musical_notation::EqualTemperament::new,
         TemperamentKind::JustIntonation => panic!("Not implemented!"),
     };
 
-    let key = musical_notation::Key::new(args.scale_tonic, temp);
-
-    let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
-
-    let action: Rc<dyn Action<_>> = Rc::new(SimpleAction::new(
-        key,
+    let key = musical_notation::Key::new(
+        args.scale_tonic,
         match args.scale_kind {
             ScaleKind::Major => &musical_notation::ScaleKind::Major,
             ScaleKind::Minor => &musical_notation::ScaleKind::Minor,
-            ScaleKind::Chromatic => panic!("Not implemented!"),
+            _ => panic!("Not implemented!"),
         },
-    ));
+        pitch_standard,
+        func,
+    );
+
+    let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
+
+    let action: Rc<dyn Action<_>> = Rc::new(SimpleAction::new(key));
 
     for atom in axiom.atoms() {
         atom_types.insert(

@@ -6,12 +6,11 @@ pub mod error;
 
 pub struct SimpleAction<T: notation::Temperament> {
     key: notation::Key<T>,
-    scale_kind: &'static notation::ScaleKind,
 }
 
 impl<T: notation::Temperament> SimpleAction<T> {
-    pub fn new(key: notation::Key<T>, scale_kind: &'static notation::ScaleKind) -> Self {
-        SimpleAction { key, scale_kind }
+    pub fn new(key: notation::Key<T>) -> Self {
+        SimpleAction { key }
     }
 }
 
@@ -21,7 +20,7 @@ impl<T: notation::Temperament> Action<NeutralActionState> for SimpleAction<T> {
         symbol: char,
         _state: RefMut<NeutralActionState>,
     ) -> Result<notation::MusicalElement, ActionError> {
-        if let Some(pitches) = self.key.get_scale_pitches(self.scale_kind, 4, 1, 7 * 7) {
+        if let Some(pitches) = self.key.get_scale_pitches(4, 1, 7 * 7) {
             let char_pos = symbol as u16;
             const CHAR_POS_CAP_A: u16 = 'A' as u16;
             const CHAR_POS_CAP_Z: u16 = 'Z' as u16;
@@ -50,7 +49,6 @@ impl<T: notation::Temperament> Action<NeutralActionState> for SimpleAction<T> {
         } else {
             Err(ActionError::from_generation_error(&error::PitchError::new(
                 &self.key,
-                &self.scale_kind,
             )))
         }
     }

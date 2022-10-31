@@ -1,7 +1,5 @@
 const OCTAVE_MULTIPLICATIVE: u8 = 2;
 
-use std::rc::Rc;
-
 /// Defines the temperaments that can be used to determine the
 /// frequency of a specific musical tone like 'c natural' or 'a flat'.
 ///
@@ -119,7 +117,7 @@ impl Tone {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ScaleKind {
     Major,
     Minor,
@@ -130,20 +128,32 @@ where
     T: temperament::Temperament + Sized,
 {
     tone: Tone,
-    temperament: Rc<T>,
+    scale_kind: &'static ScaleKind,
+    temperament: T,
+    scale: [Tone; DEGREES_IN_SCALE as usize],
 }
 
 impl<T> Key<T>
 where
     T: temperament::Temperament,
 {
-    pub fn new(tone: Tone, temperament: Rc<T>) -> Self {
-        Key { tone, temperament }
+    pub fn new<F>(tone: Tone, scale_kind: &'static ScaleKind, pitch_standard: f64, func: F) -> Self
+    where
+        F: Fn(f64, [Tone; DEGREES_IN_SCALE as usize]) -> T,
+    {
+        let scale: [Tone; DEGREES_IN_SCALE as usize] = Self::get_scale(tone, scale_kind);
+        let temperament = func(pitch_standard, scale);
+        Key {
+            tone,
+            scale_kind,
+            temperament,
+            scale,
+        }
     }
 
     /// Returns the note names with accidentals in the current major key.
     ///
-    fn get_key_signature(&self, tone: Tone) -> (&'static Accidental, Vec<&'static NoteName>) {
+    fn get_key_signature(tone: Tone) -> (&'static Accidental, Vec<&'static NoteName>) {
         let helper = |index: i8| -> (&'static Accidental, Vec<&'static NoteName>) {
             let accidentals_sharp: [&'static NoteName; 7] = [
                 &NoteName::F,
@@ -207,8 +217,8 @@ where
     /// Returns the tonic of the major scale, whose
     /// relative minor scale has the tonic of this key.
     ///
-    fn get_major_of_minor(&self) -> Tone {
-        match (self.tone.note_name, self.tone.accidental) {
+    fn get_major_of_minor(tone: Tone) -> Tone {
+        match (tone.note_name, tone.accidental) {
             (&NoteName::C, &Accidental::Flat) => Tone::new(&NoteName::D, &Accidental::Natural),
             (&NoteName::G, &Accidental::Flat) => Tone::new(&NoteName::A, &Accidental::Natural),
             (&NoteName::D, &Accidental::Flat) => Tone::new(&NoteName::E, &Accidental::Natural),
@@ -235,9 +245,9 @@ where
 
     /// Returns the notes and accidentals of the current key.
     ///
-    fn get_scale(&self, scale_kind: &'static ScaleKind) -> [Tone; DEGREES_IN_SCALE as usize] {
+    fn get_scale(tone: Tone, scale_kind: &'static ScaleKind) -> [Tone; DEGREES_IN_SCALE as usize] {
         let helper = |tone: Tone| -> [Tone; DEGREES_IN_SCALE as usize] {
-            let key_signature = self.get_key_signature(tone);
+            let key_signature = Self::get_key_signature(tone);
 
             let mut scale =
                 [Tone::new(&NoteName::C, &Accidental::Natural); DEGREES_IN_SCALE as usize];
@@ -261,11 +271,11 @@ where
         };
 
         match scale_kind {
-            ScaleKind::Major => helper(self.tone),
+            ScaleKind::Major => helper(tone),
             ScaleKind::Minor => {
                 // get the tonic of the major scale whose
                 // relative minor scale has the tonic of this key
-                let major_of_minor: Tone = self.get_major_of_minor();
+                let major_of_minor: Tone = Self::get_major_of_minor(tone);
 
                 // get the major scale of that tonic
                 let mut scale = helper(major_of_minor);
@@ -325,7 +335,6 @@ where
     ///
     pub fn get_scale_pitches(
         &self,
-        scale_kind: &'static ScaleKind,
         octave: i16,
         degree: u8,
         number_of_pitches: u8,
@@ -335,13 +344,12 @@ where
         }
 
         let mut pitches: Vec<Pitch> = vec![];
-        let scale: [Tone; DEGREES_IN_SCALE as usize] = self.get_scale(scale_kind);
 
         let mut octaves: i16 = 0;
         let mut pitches_in_octave = 0;
 
         for degree in degree..(degree + number_of_pitches) {
-            let tone = scale[(degree as i8 - 1).rem_euclid(DEGREES_IN_SCALE as i8) as usize];
+            let tone = self.scale[(degree as i8 - 1).rem_euclid(DEGREES_IN_SCALE as i8) as usize];
             if degree > 1
                 && octaves == 0
                 && ((tone.note_name == &NoteName::C && tone.accidental == &Accidental::Natural)
@@ -391,14 +399,16 @@ mod tests {
         Accidental, Key, NoteName, ScaleKind, Tone,
     };
 
-    use std::rc::Rc;
-
     #[test]
     fn test_key_c_natural_major() {
-        let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let c_natural = Tone::new(&NoteName::C, &Accidental::Natural);
-        let key = Key::new(c_natural, temp);
-        match key.get_scale_pitches(&ScaleKind::Major, 4, 1, 8) {
+        let c_natural_major = Key::new(
+            c_natural,
+            &ScaleKind::Major,
+            STUTTGART_PITCH,
+            EqualTemperament::new,
+        );
+        match c_natural_major.get_scale_pitches(4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
                 assert_eq!(format!("{:.3?}", pitches[0]), "Pitch(261.626)" /*C_4*/);
@@ -416,10 +426,14 @@ mod tests {
 
     #[test]
     fn test_key_g_natural_major() {
-        let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let g_natural = Tone::new(&NoteName::G, &Accidental::Natural);
-        let key = Key::new(g_natural, temp);
-        match key.get_scale_pitches(&ScaleKind::Major, 4, 1, 8) {
+        let g_natural_major = Key::new(
+            g_natural,
+            &ScaleKind::Major,
+            STUTTGART_PITCH,
+            EqualTemperament::new,
+        );
+        match g_natural_major.get_scale_pitches(4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
                 assert_eq!(
@@ -458,13 +472,16 @@ mod tests {
 
     #[test]
     fn test_key_d_flat_major() {
-        let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-
         let d_flat = Tone::new(&NoteName::D, &Accidental::Flat);
         let c_sharp = Tone::new(&NoteName::C, &Accidental::Sharp);
 
-        let key_a = Key::new(d_flat, Rc::clone(&temp));
-        match key_a.get_scale_pitches(&ScaleKind::Major, 4, 1, 15) {
+        let d_flat_major = Key::new(
+            d_flat,
+            &ScaleKind::Major,
+            STUTTGART_PITCH,
+            EqualTemperament::new,
+        );
+        match d_flat_major.get_scale_pitches(4, 1, 15) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 15);
                 assert_eq!(
@@ -531,8 +548,13 @@ mod tests {
             None => panic!("expected some pitches"),
         }
 
-        let key_b = Key::new(c_sharp, Rc::clone(&temp));
-        match key_b.get_scale_pitches(&ScaleKind::Major, 4, 1, 15) {
+        let c_sharp_major = Key::new(
+            c_sharp,
+            &ScaleKind::Major,
+            STUTTGART_PITCH,
+            EqualTemperament::new,
+        );
+        match c_sharp_major.get_scale_pitches(4, 1, 15) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 15);
                 assert_eq!(
@@ -602,10 +624,14 @@ mod tests {
 
     #[test]
     fn test_key_g_flat_minor() {
-        let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let g_flat = Tone::new(&NoteName::G, &Accidental::Flat);
-        let key = Key::new(g_flat, temp);
-        match key.get_scale_pitches(&ScaleKind::Minor, 4, 1, 8) {
+        let g_flat_minor = Key::new(
+            g_flat,
+            &ScaleKind::Minor,
+            STUTTGART_PITCH,
+            EqualTemperament::new,
+        );
+        match g_flat_minor.get_scale_pitches(4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
 
@@ -651,10 +677,14 @@ mod tests {
 
     #[test]
     fn test_key_f_sharp_minor() {
-        let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
         let f_sharp = Tone::new(&NoteName::F, &Accidental::Sharp);
-        let key = Key::new(f_sharp, temp);
-        match key.get_scale_pitches(&ScaleKind::Minor, 4, 1, 8) {
+        let f_sharp_minor = Key::new(
+            f_sharp,
+            &ScaleKind::Minor,
+            STUTTGART_PITCH,
+            EqualTemperament::new,
+        );
+        match f_sharp_minor.get_scale_pitches(4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
 

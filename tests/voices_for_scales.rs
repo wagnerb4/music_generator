@@ -64,13 +64,12 @@ fn sequence_helper(voice: Voice) {
 ///
 #[test]
 fn voice_of_c_major_seven_octaves() {
-    let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-    let key = Key::new(Tone::from("C").unwrap(), temp);
+    let key = Key::new(Tone::from("C").unwrap(), &ScaleKind::Major, STUTTGART_PITCH, EqualTemperament::new);
     let axiom: Axiom = Axiom::from("AHOVcjqBIPWdkrCJQXelsDKRYfmtELSZgnuFMTahovGNUbipw").unwrap();
 
     let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
 
-    let action: Rc<dyn Action<_>> = Rc::new(SimpleAction::new(key, &ScaleKind::Major));
+    let action: Rc<dyn Action<_>> = Rc::new(SimpleAction::new(key));
 
     for atom in axiom.atoms() {
         atom_types.insert(
@@ -147,13 +146,12 @@ fn voice_of_c_major_seven_octaves() {
 
 #[test]
 fn voice_of_d_flat_major_two_octave_scale() {
-    let temp = Rc::new(EqualTemperament::new(STUTTGART_PITCH));
-    let key = Key::new(Tone::from("C#").unwrap(), temp);
+    let key = Key::new(Tone::from("C#").unwrap(), &ScaleKind::Major, STUTTGART_PITCH, EqualTemperament::new);
     let axiom: Axiom = Axiom::from("ABCDEFGHIJKLMNO").unwrap();
 
     let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
 
-    let action: Rc<dyn Action<_>> = Rc::new(SimpleAction::new(key, &ScaleKind::Major));
+    let action: Rc<dyn Action<_>> = Rc::new(SimpleAction::new(key));
 
     for atom in axiom.atoms() {
         atom_types.insert(

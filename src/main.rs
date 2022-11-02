@@ -123,7 +123,7 @@ fn main() -> Result<()> {
         },
         pitch_standard,
         func,
-    );
+    )?;
 
     let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
 

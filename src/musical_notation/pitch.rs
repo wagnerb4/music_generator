@@ -1,5 +1,10 @@
+use crate::musical_notation::pitch::error::KeyCreationError;
+use crate::musical_notation::pitch::temperament::error::TemperamentError;
+use crate::musical_notation::Temperament;
+
 const OCTAVE_MULTIPLICATIVE: u8 = 2;
 
+pub mod error;
 /// Defines the temperaments that can be used to determine the
 /// frequency of a specific musical tone like 'c natural' or 'a flat'.
 ///
@@ -115,6 +120,14 @@ impl Tone {
             ),
         }
     }
+
+    pub fn get_note_name(&self) -> &NoteName {
+        self.note_name
+    }
+
+    pub fn get_accidental(&self) -> &Accidental {
+        self.accidental
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -125,7 +138,7 @@ pub enum ScaleKind {
 
 pub struct Key<T>
 where
-    T: temperament::Temperament + Sized,
+    T: Temperament + Sized,
 {
     tone: Tone,
     scale_kind: &'static ScaleKind,
@@ -135,20 +148,25 @@ where
 
 impl<T> Key<T>
 where
-    T: temperament::Temperament,
+    T: Temperament,
 {
-    pub fn new<F>(tone: Tone, scale_kind: &'static ScaleKind, pitch_standard: f64, func: F) -> Self
+    pub fn new<F>(
+        tone: Tone,
+        scale_kind: &'static ScaleKind,
+        pitch_standard: f64,
+        func: F,
+    ) -> Result<Self, KeyCreationError>
     where
-        F: Fn(f64, [Tone; DEGREES_IN_SCALE as usize]) -> T,
+        F: Fn(f64, [Tone; DEGREES_IN_SCALE as usize]) -> Result<T, TemperamentError>,
     {
         let scale: [Tone; DEGREES_IN_SCALE as usize] = Self::get_scale(tone, scale_kind);
-        let temperament = func(pitch_standard, scale);
-        Key {
+        let temperament: T = func(pitch_standard, scale)?;
+        Ok(Key {
             tone,
             scale_kind,
             temperament,
             scale,
-        }
+        })
     }
 
     /// Returns the note names with accidentals in the current major key.
@@ -381,7 +399,7 @@ where
 
 impl<T> std::fmt::Display for Key<T>
 where
-    T: temperament::Temperament,
+    T: Temperament,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.tone.accidental {
@@ -400,14 +418,14 @@ mod tests {
     };
 
     #[test]
-    fn test_key_c_natural_major() {
+    fn test_key_c_natural_major() -> Result<(), String> {
         let c_natural = Tone::new(&NoteName::C, &Accidental::Natural);
         let c_natural_major = Key::new(
             c_natural,
             &ScaleKind::Major,
             STUTTGART_PITCH,
             EqualTemperament::new,
-        );
+        )?;
         match c_natural_major.get_scale_pitches(4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
@@ -419,20 +437,21 @@ mod tests {
                 assert_eq!(format!("{:.3?}", pitches[5]), "Pitch(440.000)" /*A_4*/);
                 assert_eq!(format!("{:.3?}", pitches[6]), "Pitch(493.883)" /*B_4*/);
                 assert_eq!(format!("{:.3?}", pitches[7]), "Pitch(523.251)" /*C_5*/);
+                return Ok(());
             }
-            None => panic!("expected some pitches"),
+            None => Err(String::from("expected some pitches")),
         }
     }
 
     #[test]
-    fn test_key_g_natural_major() {
+    fn test_key_g_natural_major() -> Result<(), String> {
         let g_natural = Tone::new(&NoteName::G, &Accidental::Natural);
         let g_natural_major = Key::new(
             g_natural,
             &ScaleKind::Major,
             STUTTGART_PITCH,
             EqualTemperament::new,
-        );
+        )?;
         match g_natural_major.get_scale_pitches(4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
@@ -465,13 +484,14 @@ mod tests {
                     format!("{:.3?}", pitches[7]),
                     "Pitch(783.991)" /*G_5 + 10*/
                 );
+                return Ok(());
             }
-            None => panic!("expected some pitches"),
+            None => Err(String::from("expected some pitches")),
         }
     }
 
     #[test]
-    fn test_key_d_flat_major() {
+    fn test_key_d_flat_major() -> Result<(), String> {
         let d_flat = Tone::new(&NoteName::D, &Accidental::Flat);
         let c_sharp = Tone::new(&NoteName::C, &Accidental::Sharp);
 
@@ -480,7 +500,7 @@ mod tests {
             &ScaleKind::Major,
             STUTTGART_PITCH,
             EqualTemperament::new,
-        );
+        )?;
         match d_flat_major.get_scale_pitches(4, 1, 15) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 15);
@@ -545,7 +565,7 @@ mod tests {
                     "Pitch(1108.731)" /*(+1=16) Db_6*/
                 );
             }
-            None => panic!("expected some pitches"),
+            None => return Err(String::from("expected some pitches")),
         }
 
         let c_sharp_major = Key::new(
@@ -553,7 +573,7 @@ mod tests {
             &ScaleKind::Major,
             STUTTGART_PITCH,
             EqualTemperament::new,
-        );
+        )?;
         match c_sharp_major.get_scale_pitches(4, 1, 15) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 15);
@@ -617,20 +637,21 @@ mod tests {
                     format!("{:.3?}", pitches[14]),
                     "Pitch(1108.731)" /*(+1=16) Db_6*/
                 );
+                return Ok(());
             }
-            None => panic!("expected some pitches"),
+            None => Err(String::from("expected some pitches")),
         }
     }
 
     #[test]
-    fn test_key_g_flat_minor() {
+    fn test_key_g_flat_minor() -> Result<(), String> {
         let g_flat = Tone::new(&NoteName::G, &Accidental::Flat);
         let g_flat_minor = Key::new(
             g_flat,
             &ScaleKind::Minor,
             STUTTGART_PITCH,
             EqualTemperament::new,
-        );
+        )?;
         match g_flat_minor.get_scale_pitches(4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
@@ -670,20 +691,21 @@ mod tests {
                     format!("{:.3?}", pitches[7]),
                     "Pitch(739.989)" /*(+2=9) Gb_5*/
                 );
+                return Ok(());
             }
-            None => panic!("expected some pitches"),
+            None => Err(String::from("expected some pitches")),
         }
     }
 
     #[test]
-    fn test_key_f_sharp_minor() {
+    fn test_key_f_sharp_minor() -> Result<(), String> {
         let f_sharp = Tone::new(&NoteName::F, &Accidental::Sharp);
         let f_sharp_minor = Key::new(
             f_sharp,
             &ScaleKind::Minor,
             STUTTGART_PITCH,
             EqualTemperament::new,
-        );
+        )?;
         match f_sharp_minor.get_scale_pitches(4, 1, 8) {
             Some(pitches) => {
                 assert_eq!(pitches.len(), 8);
@@ -723,8 +745,9 @@ mod tests {
                     format!("{:.3?}", pitches[7]),
                     "Pitch(739.989)" /*(+2=9) F#_5*/
                 );
+                return Ok(());
             }
-            None => panic!("expected some pitches"),
+            None => Err(String::from("expected some pitches")),
         }
     }
 }

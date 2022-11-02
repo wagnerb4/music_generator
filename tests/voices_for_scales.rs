@@ -1,6 +1,6 @@
 use music_generator::musical_notation::{
-    Duration, EqualTemperament, Key, MusicalElement, Tone, Pitch, ScaleKind,
-    Temperament, Volume, M, STUTTGART_PITCH,
+    Duration, EqualTemperament, Key, MusicalElement, Pitch, ScaleKind, Temperament, Tone, Volume,
+    M, STUTTGART_PITCH,
 };
 
 use music_generator::voice::action::{Action, AtomType, NeutralActionState, SimpleAction};
@@ -55,7 +55,6 @@ fn sequence_helper(voice: Voice) {
     let wave = wave.filter_latency(duration, &mut (limiter_stereo((0.01, 0.1))));
     wave.save_wav16(std::path::Path::new("sequence.wav")).unwrap()
     */
-    
 }
 
 /// Tests the simple action, which maps the 49 letters A-Za-w to the notes of seven octaves
@@ -63,8 +62,13 @@ fn sequence_helper(voice: Voice) {
 /// 1234567 1234567 1234567 1234567 1234567 1234567 1234567
 ///
 #[test]
-fn voice_of_c_major_seven_octaves() {
-    let key = Key::new(Tone::from("C").unwrap(), &ScaleKind::Major, STUTTGART_PITCH, EqualTemperament::new);
+fn voice_of_c_major_seven_octaves() -> Result<(), String> {
+    let key = Key::new(
+        Tone::from("C").unwrap(),
+        &ScaleKind::Major,
+        STUTTGART_PITCH,
+        EqualTemperament::new,
+    )?;
     let axiom: Axiom = Axiom::from("AHOVcjqBIPWdkrCJQXelsDKRYfmtELSZgnuFMTahovGNUbipw").unwrap();
 
     let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
@@ -141,12 +145,17 @@ fn voice_of_c_major_seven_octaves() {
         format!("{:.3?}", voice_expected)
     );
 
-    sequence_helper(voice_actual);
+    Ok(sequence_helper(voice_actual))
 }
 
 #[test]
-fn voice_of_d_flat_major_two_octave_scale() {
-    let key = Key::new(Tone::from("C#").unwrap(), &ScaleKind::Major, STUTTGART_PITCH, EqualTemperament::new);
+fn voice_of_d_flat_major_two_octave_scale() -> Result<(), String> {
+    let key = Key::new(
+        Tone::from("C#").unwrap(),
+        &ScaleKind::Major,
+        STUTTGART_PITCH,
+        EqualTemperament::new,
+    )?;
     let axiom: Axiom = Axiom::from("ABCDEFGHIJKLMNO").unwrap();
 
     let mut atom_types: HashMap<&Atom, AtomType<NeutralActionState>> = HashMap::new();
@@ -189,5 +198,5 @@ fn voice_of_d_flat_major_two_octave_scale() {
         format!("{:.3?}", voice_expected)
     );
 
-    sequence_helper(voice_actual);
+    Ok(sequence_helper(voice_actual))
 }
